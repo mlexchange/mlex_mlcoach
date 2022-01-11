@@ -1,0 +1,50 @@
+{
+  "model_name": "evaluate_model",
+  "version": "0.0.1",
+  "type": "testing",
+  "user": "mlexchange-team",
+  "uri": "TBD",
+  "application": [
+    "labelmaker"
+  ],
+  "description": "",
+  "gui_parameters": [
+    {
+      "type": "intslider",
+      "name": "rotation_angle",
+      "title": "Rotation Angle",
+      "value": 0,
+      "min": 0,
+      "max": 360
+    },
+    {
+      "type": "strchecklist",
+      "name": "image_flip",
+      "title": "Image FLip",
+      "value": [],
+      "options": [
+        {
+          "label": "Horizontal",
+          "value": "horiz"
+        },
+        {
+          "label": "Vertical",
+          "value": "vert"
+        }
+      ]
+    },
+    {
+      "type": "intslider",
+      "name": "batch_size",
+      "title": "Batch Size",
+      "value": 32,
+      "min": 16,
+      "max": 1500,
+      "step": 8,
+      "tooltip": {
+        "always_visible": true,
+        "placement": "bottom"}
+    }
+  ],
+  "cmd": []
+}

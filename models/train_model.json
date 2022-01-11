@@ -1,0 +1,108 @@
+{
+  "model_name": "train_model",
+  "version": "0.0.1",
+  "type": "training",
+  "user": "mlexchange-team",
+  "uri": "TBD",
+  "application": [
+    "labelmaker"
+  ],
+  "description": "",
+  "gui_parameters": [
+    {
+      "type": "intslider",
+      "name": "rotation_angle",
+      "title": "Rotation Angle",
+      "value": 0,
+      "min": 0,
+      "max": 360,
+      "tooltip": {
+        "always_visible": true,
+        "placement": "bottom"}
+    },
+    {
+      "type": "strchecklist",
+      "name": "image_flip",
+      "title": "Image FLip",
+      "value": [],
+      "options": [
+        {
+          "label": "Horizontal",
+          "value": "horiz"
+        },
+        {
+          "label": "Vertical",
+          "value": "vert"
+        }
+      ]
+    },
+    {
+      "type": "intslider",
+      "name": "batch_size",
+      "title": "Batch Size",
+      "value": 32,
+      "min": 16,
+      "max": 1500,
+      "step": 8,
+      "tooltip": {
+        "always_visible": true,
+        "placement": "bottom"}
+    },
+    {
+      "type": "radio",
+      "name": "pooling_opts",
+      "title": "Pooling Options",
+      "options": [
+        {"label": "None", "value":  "None"},
+        {"label": "Maximum", "value":  "max"},
+        {"label": "Average", "value":  "avg"}
+        ],
+      "value": "None",
+      "labelStyle": {"display": "inline-block"}
+    },
+    {
+      "type": "intslider",
+      "name": "steps_per_epoch",
+      "title": "Steps per Epoch",
+      "value": 2,
+      "min": 1,
+      "max": 100,
+      "tooltip": {
+        "always_visible": true,
+        "placement": "bottom"}
+    },
+    {
+      "type": "intslider",
+      "name": "num_epoch",
+      "title": "Number of Epoch",
+      "value": 3,
+      "min": 1,
+      "max": 100,
+      "tooltip": {
+        "always_visible": true,
+        "placement": "bottom"}
+    },
+    {
+      "type": "strdropdown",
+      "name": "ml_model",
+      "title": "ML Model",
+      "options": [
+        {"label": "Xception", "value": "Xception"},
+        {"label": "VGG16", "value": "VGG16"},
+        {"label": "VGG19", "value": "VGG19"},
+        {"label": "ResNet101", "value": "ResNet101"},
+        {"label": "ResNet152", "value": "ResNet152"},
+        {"label": "ResNet50V2", "value": "ResNet50V2"},
+        {"label": "ResNet50", "value": "ResNet50"},
+        {"label": "ResNet152V2", "value": "ResNet152V2"},
+        {"label": "InceptionV3", "value": "InceptionV3"},
+        {"label": "DenseNet201", "value": "DenseNet201"},
+        {"label": "NASNetLarge", "value": "NASNetLarge"},
+        {"label": "InceptionResNetV2", "value": "InceptionResNetV2"},
+        {"label": "DenseNet169", "value": "DenseNet169"}
+      ],
+      "value": "Xception"
+    }
+  ],
+  "cmd": []
+}

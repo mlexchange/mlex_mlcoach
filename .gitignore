@@ -1,0 +1,6 @@
+/data/*
+*pycache*
+.DS_Store
+.keras
+.Makefile.swp
+._*
