@@ -1,6 +1,6 @@
 # mlex_mlcoach
 ## Description
-This app provides a training/testing platform for neural networks by using [TensorFlow](https://www.tensorflow.org).
+This app provides a training/testing platform for neural networks with [TensorFlow](https://www.tensorflow.org).
 
 ## Running
 First, let's install docker:
