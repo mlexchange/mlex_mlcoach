@@ -32,13 +32,13 @@ def data_processing(values, train_data_dir, val_data_dir):
     first_data = glob.glob(train_data_dir + '/**/*.*', recursive=True)
     data_type = os.path.splitext(first_data[0])[-1]
 
-    if target_size is None:
-        im = Image.open(first_data[0])
-        target_size = im.size
-        if im.mode == 'RGB':
-            color_mode = 'rgb'
-        else:
-            color_mode = 'rgb'
+    im = Image.open(first_data[0])
+    if im.mode == 'RGB':
+        color_mode = 'rgb'
+    if im.mode == 'RGBA':
+        color_mode = 'rgba'
+    if im.mode == 'L':
+        color_mode = 'grayscale'
 
     if data_type == '.jpeg':
         train_generator = train_datagen.flow_from_directory(
@@ -143,6 +143,7 @@ if __name__ == '__main__':
     batch_size = data_aug_parameters.batch_size
     target_size = data_aug_parameters.target_size
 
+    print('Device: ', tf.test.gpu_device_name())
     train_generator, valid_generator = \
         data_processing([rotation_angle, image_flip, batch_size, target_size], TRAIN_DIR, VAL_DIR)
 
