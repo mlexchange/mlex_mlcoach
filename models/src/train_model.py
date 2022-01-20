@@ -142,11 +142,10 @@ if __name__ == '__main__':
     rotation_angle = data_aug_parameters.rotation_angle
     image_flip = data_aug_parameters.image_flip
     batch_size = data_aug_parameters.batch_size
-    target_size = data_aug_parameters.target_size
 
     print('Device: ', tf.test.gpu_device_name())
     train_generator, valid_generator = \
-        data_processing([rotation_angle, image_flip, batch_size, target_size], TRAIN_DIR, VAL_DIR)
+        data_processing([rotation_angle, image_flip, batch_size], TRAIN_DIR, VAL_DIR)
 
     CLASSES = [subdir for subdir in sorted(os.listdir(TRAIN_DIR)) if
                os.path.isdir(os.path.join(TRAIN_DIR, subdir))]
