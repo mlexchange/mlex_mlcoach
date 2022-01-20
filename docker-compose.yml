@@ -1,4 +1,4 @@
-version: "0.1"
+version: "3"
 
 services:
   front-end:
@@ -10,10 +10,10 @@ services:
       dockerfile: "docker/Dockerfile"
     command: "python src/frontend.py"
     environment:
-      DATA_DIR: /mnt/c/Users/postdoc/Documents/Database/born
+      DATA_DIR: /data/tanchavez/Datasets/born
     volumes:
       - ${PWD}:/app/work
-      - /mnt/c/Users/postdoc/Documents/Database/born:/app/work/data
+      - /data/tanchavez/Datasets/born:/app/work/data
     ports:
       - "8050:8050"
     networks:

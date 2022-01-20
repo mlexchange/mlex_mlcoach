@@ -2,10 +2,9 @@ import argparse
 import config as cfg
 import json
 import glob
-from PIL import Image
+import numpy as np
 import os
 
-from keras.callbacks import History
 import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
@@ -17,7 +16,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 # Process the images and allows randomization as part of the training with
 # random flips or angles if you allow it
-def data_processing(values, train_data_dir, val_data_dir):
+def data_processing(values, train_data_dir, val_data_dir, classes):
     rotation_angle = values[0]
     horizontal_flip = 'horiz' in values[1]
     vertical_flip = 'vert' in values[1]
@@ -39,7 +38,7 @@ def data_processing(values, train_data_dir, val_data_dir):
             color_mode='rgb',       # fixed for VGG16
             class_mode='categorical')
 
-        valid_generator = train_datagen.flow_from_directory(
+        valid_generator = valid_datagen.flow_from_directory(
             val_data_dir,
             target_size=(224,224),  # fixed for VGG16
             batch_size=batch_size,
@@ -96,7 +95,7 @@ def data_processing(values, train_data_dir, val_data_dir):
             batch_size=batch_size,
             shuffle=True)
 
-        valid_generator = test_datagen.flow(
+        valid_generator = valid_datagen.flow(
             x=xValid,
             y=yValid,
             batch_size=batch_size,
@@ -144,12 +143,11 @@ if __name__ == '__main__':
     batch_size = data_aug_parameters.batch_size
 
     print('Device: ', tf.test.gpu_device_name())
-    train_generator, valid_generator = \
-        data_processing([rotation_angle, image_flip, batch_size], TRAIN_DIR, VAL_DIR)
-
-    CLASSES = [subdir for subdir in sorted(os.listdir(TRAIN_DIR)) if
+    classes = [subdir for subdir in sorted(os.listdir(TRAIN_DIR)) if
                os.path.isdir(os.path.join(TRAIN_DIR, subdir))]
-    class_num = len(CLASSES)
+    class_num = len(classes)
+    train_generator, valid_generator = \
+        data_processing([rotation_angle, image_flip, batch_size], TRAIN_DIR, VAL_DIR, classes)
 
     pooling = train_parameters.pooling
     epochs = train_parameters.epochs

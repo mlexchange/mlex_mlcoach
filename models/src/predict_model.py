@@ -14,13 +14,6 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.models import load_model
 
 
-# dimensions of our images.
-img_width, img_height = 224, 224
-input_shape = ((img_width, img_height))
-IMG_SIZE,IMG_SIZE = 224, 224
-nb_channels = 3
-
-
 # Process the images and allows randomization as part of the training with
 # random flips or angles if you allow it
 def data_processing(values, test_data_dir):
@@ -41,7 +34,7 @@ def data_processing(values, test_data_dir):
 
         test_generator = test_datagen.flow_from_directory(
             test_data_dir,
-            target_size=(img_height, img_width),
+            target_size=(224, 224),
             color_mode="rgb",
             batch_size=1,
             class_mode='categorical',
