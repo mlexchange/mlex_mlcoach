@@ -23,10 +23,10 @@ run_docker:
 	docker run -u ${ID_USER $USER}:${ID_GROUP $USER} --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --memory-swap -1 -it -v ${PWD}:/app/work/ -v /mnt/c/Users/postdoc/Documents/Database/born:/app/work/data -p 8888:8888 ${IMG_WEB_SVC}
 
 train_example:
-	docker run -u ${ID_USER $USER}:${ID_GROUP $USER} --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --memory-swap -1 -it --gpus all -v /data/tanchavez/Datasets/born:/app/work/data ${IMG_WEB_SVC} python3 src/train_model.py data '{"data_augmentation":{"rotation_angle": 0, "image_flip": [], "batch_size": 1}, "pooling": "None", "epochs": 100, "nn_model": "VGG16"}'
+	docker run -u ${ID_USER $USER}:${ID_GROUP $USER} --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --memory-swap -1 -it --gpus all -v /data/tanchavez/Datasets/born:/app/work/data ${IMG_WEB_SVC} python3 src/train_model.py data '{"data_augmentation":{"rotation_angle": 0, "image_flip": [], "batch_size": 64}, "pooling": "None", "epochs": 100, "nn_model": "VGG16"}'
 
 test_example:
-	docker run -u ${ID_USER $USER}:${ID_GROUP $USER} --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --memory-swap -1 -it -v ${PWD}:/app/work/ ${IMG_WEB_SVC} python3 scr/segment.py data/images/test/segment_series.tif data/output/state_dict_net.pt data/output '{"show_progress": 20}'
+	docker run -u ${ID_USER $USER}:${ID_GROUP $USER} --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --memory-swap -1 -it --gpus all -v data/tanchavez/Datasets/born:/app/work/data ${IMG_WEB_SVC} python3 scr/predict_model.py data '{"rotation_angle": 0, "image_flip": [], "batch_size": 64}'
 
 
 clean: 
