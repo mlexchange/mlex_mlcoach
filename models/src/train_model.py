@@ -32,20 +32,12 @@ def data_processing(values, train_data_dir, val_data_dir):
     first_data = glob.glob(train_data_dir + '/**/*.*', recursive=True)
     data_type = os.path.splitext(first_data[0])[-1]
 
-    im = Image.open(first_data[0])
-    if im.mode == 'RGB':
-        color_mode = 'rgb'
-    if im.mode == 'RGBA':
-        color_mode = 'rgba'
-    if im.mode == 'L':
-        color_mode = 'grayscale'
-
     if data_type == '.jpeg':
         train_generator = train_datagen.flow_from_directory(
             train_data_dir,
             target_size=target_size,
             batch_size=batch_size,
-            color_mode=color_mode,
+            color_mode='rgb',   # VGG16 requires 3 channels
             class_mode='categorical')
 
         valid_generator = []
