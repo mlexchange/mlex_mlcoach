@@ -277,8 +277,8 @@ def execute(clicks, values, action_selection, job_data, row):
                              'batch_size': values[2]}
             json_dict = {'data_augmentation': data_aug_dict,
                           'pooling': values[3],
-                          'epochs': values[5],
-                          'nn_model': values[6]}
+                          'epochs': values[4],
+                          'nn_model': values[5]}
             command = "python3 src/train_model.py"
             directories = [str(out_path)]
         if action_selection == 'evaluate_model':
