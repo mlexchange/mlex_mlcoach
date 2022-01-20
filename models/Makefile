@@ -26,7 +26,7 @@ train_example:
 	docker run -u ${ID_USER $USER}:${ID_GROUP $USER} --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --memory-swap -1 -it --gpus all -v /data/tanchavez/Datasets/born:/app/work/data ${IMG_WEB_SVC} python3 src/train_model.py data '{"data_augmentation":{"rotation_angle": 0, "image_flip": [], "batch_size": 64}, "pooling": "None", "epochs": 100, "nn_model": "VGG16"}'
 
 test_example:
-	docker run -u ${ID_USER $USER}:${ID_GROUP $USER} --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --memory-swap -1 -it --gpus all -v data/tanchavez/Datasets/born:/app/work/data ${IMG_WEB_SVC} python3 scr/predict_model.py data '{"rotation_angle": 0, "image_flip": [], "batch_size": 64}'
+	docker run -u ${ID_USER $USER}:${ID_GROUP $USER} --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --memory-swap -1 -it --gpus all -v /data/tanchavez/Datasets/born:/app/work/data ${IMG_WEB_SVC} python3 scr/predict_model.py data '{"rotation_angle": 0, "image_flip": [], "batch_size": 64}'
 
 
 clean: 
