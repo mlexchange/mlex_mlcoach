@@ -273,10 +273,11 @@ def generate_figure(log, start):
     df = pd.read_csv(StringIO(log.replace('\n\n', '\n')), sep=' ')
     df.set_index('epoch', inplace=True)
     try:
-        fig = px.line(df)
+        fig = px.line(df, markers=True)
         fig.update_layout(xaxis_title="epoch", yaxis_title="loss", margin=dict(l=20, r=20, t=20, b=20))
         return fig
-    except Exception:
+    except Exception as e:
+        print(e)
         return go.Figure(go.Scatter(x=[], y=[]))
 
 

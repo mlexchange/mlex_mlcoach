@@ -247,10 +247,10 @@ def refresh_image(img_ind, action_selection):
     try:
         if action_selection == 'train_model':
             image = Image.open(TRAIN_DATA.filepaths[img_ind])
-            slider_max = len(TRAIN_DATA)
+            slider_max = len(TRAIN_DATA)-1
         else:
             image = Image.open(TEST_DATA.filepaths[img_ind])
-            slider_max = len(TEST_DATA)
+            slider_max = len(TEST_DATA)-1
     except Exception as e:
         print(e)
     fig = px.imshow(image, color_continuous_scale="gray")
