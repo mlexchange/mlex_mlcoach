@@ -29,12 +29,10 @@ class DataAugmentationParams(BaseModel):
     rotation_angle: int = Field(description='rotation angle')
     image_flip: List[str] = Field(description='vertical and horizontal flip respectively')
     batch_size: int = Field(description='batch size')
-    target_size: tuple = Field(description='target images size')
 
 
 class TrainingParams(BaseModel):
     data_augmentation: DataAugmentationParams
     pooling: Pooling
-    stepoch: int = Field(description='number of steps per epoch')
     epochs: int = Field(description='number of epochs')
     nn_model: NNModel

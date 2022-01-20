@@ -22,7 +22,6 @@ def data_processing(values, train_data_dir, val_data_dir):
     horizontal_flip = 'horiz' in values[1]
     vertical_flip = 'vert' in values[1]
     batch_size = values[2]
-    target_size = values[3]
 
     train_datagen = ImageDataGenerator(
         rotation_range=rotation_angle,
@@ -35,12 +34,17 @@ def data_processing(values, train_data_dir, val_data_dir):
     if data_type == '.jpeg':
         train_generator = train_datagen.flow_from_directory(
             train_data_dir,
-            target_size=target_size,
+            target_size=(224,224),  # fixed for VGG16
             batch_size=batch_size,
-            color_mode='rgb',   # VGG16 requires 3 channels
+            color_mode='rgb',       # fixed for VGG16
             class_mode='categorical')
 
-        valid_generator = []
+        valid_generator = train_datagen.flow_from_directory(
+            val_data_dir,
+            target_size=(224,224),  # fixed for VGG16
+            batch_size=batch_size,
+            color_mode='rgb',       # fixed for VGG16
+            class_mode='categorical')
 
     elif data_type == '.npy':
         train_paths = first_data
@@ -106,9 +110,14 @@ def data_processing(values, train_data_dir, val_data_dir):
 class CustomCallback(tf.keras.callbacks.Callback):
     # For model training
     def on_epoch_end(self, epoch, logs=None):
-        if epoch == 0:
-            print('epoch loss\n', flush=True)
-        print(str(epoch)+' '+str(logs.get('loss'))+'\n', flush=True)
+        if logs.get('val_loss'):
+            if epoch == 0:
+                print('epoch loss val_loss\n', flush=True)
+            print(str(epoch)+' '+str(logs.get('loss')+' '+str(logs.get('val_loss'))+'\n', flush=True)
+        else:
+            if epoch == 0:
+                print('epoch loss\n', flush=True)
+            print(str(epoch) + ' ' + str(logs.get('loss')) + '\n', flush=True)
 
     def on_train_end(self, logs=None):
         print('Train process completed', flush=True)
@@ -144,7 +153,6 @@ if __name__ == '__main__':
     class_num = len(CLASSES)
 
     pooling = train_parameters.pooling
-    stepoch = train_parameters.stepoch
     epochs = train_parameters.epochs
     nn_model = train_parameters.nn_model
 
@@ -154,13 +162,12 @@ if __name__ == '__main__':
     model = eval(code)
 
     # tf.keras.utils.plot_model(model, "model_layout.png", show_shapes=True)
-    model.compile(
-        optimizer='adam', loss='categorical_crossentropy',
-        metrics=['accuracy'])
+    model.compile(optimizer='adam',
+                  loss='categorical_crossentropy',
+                  metrics=['accuracy'])
 
     # fit model while also keeping track of data for dash plots.
     model.fit(train_generator,
-              steps_per_epoch=stepoch,
               epochs=epochs,
               verbose=0,
               validation_data=valid_generator,
