@@ -113,7 +113,7 @@ class CustomCallback(tf.keras.callbacks.Callback):
         if logs.get('val_loss'):
             if epoch == 0:
                 print('epoch loss val_loss\n', flush=True)
-            print(str(epoch)+' '+str(logs.get('loss')+' '+str(logs.get('val_loss'))+'\n', flush=True)
+            print(str(epoch)+' '+str(logs.get('loss')+' '+str(logs.get('val_loss'))+'\n', flush=True))
         else:
             if epoch == 0:
                 print('epoch loss\n', flush=True)
