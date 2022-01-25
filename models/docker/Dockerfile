@@ -15,6 +15,5 @@ RUN pip install -r requirements.txt
 
 WORKDIR /app/work/
 COPY src/ src/
-COPY main.cfg main.cfg
 
 CMD ["bash"]

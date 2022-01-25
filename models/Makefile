@@ -23,10 +23,16 @@ run_docker:
 	docker run -u ${ID_USER $USER}:${ID_GROUP $USER} --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --memory-swap -1 -it -v ${PWD}:/app/work/ -v /mnt/c/Users/postdoc/Documents/Database/born:/app/work/data -p 8888:8888 ${IMG_WEB_SVC}
 
 train_example:
-	docker run -u ${ID_USER $USER}:${ID_GROUP $USER} --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --memory-swap -1 -it --gpus all -v /data/tanchavez/Datasets/born:/app/work/data ${IMG_WEB_SVC} python3 src/train_model.py data '{"data_augmentation":{"rotation_angle": 0, "image_flip": [], "batch_size": 64}, "pooling": "None", "epochs": 100, "nn_model": "VGG16"}'
+	docker run -u ${ID_USER $USER}:${ID_GROUP $USER} --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --memory-swap -1 -it --gpus all -v /data/tanchavez/Datasets/born:/app/work/data ${IMG_WEB_SVC} python3 src/train_model.py data/train data/val data/logs '{"rotation_angle": 0, "image_flip": [], "batch_size": 64, "pooling": "None", "epochs": 10, "nn_model": "ResNet50"}' 
 
-test_example:
-	docker run -u ${ID_USER $USER}:${ID_GROUP $USER} --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --memory-swap -1 -it --gpus all -v /data/tanchavez/Datasets/born:/app/work/data ${IMG_WEB_SVC} python3 src/predict_model.py data data/results '{"rotation_angle": 0, "image_flip": [], "batch_size": 64}'
+evaluate_example:
+	docker run -u ${ID_USER $USER}:${ID_GROUP $USER} --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --memory-swap -1 -it --gpus all -v /data/tanchavez/Datasets/born:/app/work/data ${IMG_WEB_SVC} python3 src/evaluate_model.py data/test data/logs '{"rotation_angle": 0, "image_flip": [], "batch_size": 1}'
+
+predict_example:
+	docker run -u ${ID_USER $USER}:${ID_GROUP $USER} --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --memory-swap -1 -it --gpus all -v /data/tanchavez/Datasets/born:/app/work/data ${IMG_WEB_SVC} python3 src/predict_model.py data/test data/logs data/logs '{"rotation_angle": 0, "image_flip": [], "batch_size": 1}'
+
+transfer_example:
+	docker run -u ${ID_USER $USER}:${ID_GROUP $USER} --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --memory-swap -1 -it --gpus all -v /data/tanchavez/Datasets/born:/app/work/data ${IMG_WEB_SVC} python3 src/transfer_learning.py data/train data/val data/logs data/logs '{"rotation_angle": 0, "image_flip": [], "batch_size": 64, "pooling": "None", "epochs": 10, "init_layer": 100}'
 
 
 clean: 
