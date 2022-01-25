@@ -22,7 +22,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     train_dir = args.train_dir
-    valid_dir = args.val_dir
+    valid_dir = args.valid_dir
     model_dir = args.model_dir
     out_dir = args.out_dir
     train_parameters = TrainingParams(**json.loads(args.parameters))
