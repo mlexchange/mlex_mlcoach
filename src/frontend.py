@@ -1,10 +1,6 @@
 import pathlib
-import uuid
-
 import dash
-import json
 import os
-import subprocess
 
 import config as cfg
 from dash.dependencies import Input, Output, State, MATCH, ALL
@@ -12,7 +8,6 @@ import dash_html_components as html
 import dash_core_components as dcc
 import dash_bootstrap_components as dbc
 import dash_table
-import numpy as np
 import pandas as pd
 import PIL.Image as Image
 import plotly.express as px
@@ -20,36 +15,53 @@ import plotly.graph_objects as go
 import uuid
 
 from helpers import SimpleJob
-from helpers import generate_dash_widget, data_processing, create_model, \
-    save_model, get_job, generate_figure, get_class_prob
+from helpers import get_job, generate_figure, get_class_prob, model_list_GET_call
+from kwarg_editor import JSONParameterEditor
 import templates
 
 external_stylesheets = [dbc.themes.BOOTSTRAP, "../assets/segmentation-style.css"]
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets, suppress_callback_exceptions=True)
 
+# Path to dataset folders
 cf = cfg.Config('src/main.cfg')
 TRAIN_DIR = cf['TRAIN_DATA_DIR']
 VAL_DIR = cf['VALIDATION_DATA_DIR']
 TEST_DIR = cf['TEST_DATA_DIR']
 MODEL_DIR = cf['MODEL_SAVE_DIR']
-DATA_DIR = str(os.environ['DATA_DIR'])
-# DATA_DIR = "/mnt/c/Users/postdoc/Documents/Database/born"
-# DATA_DIR = "data"
-USER = 'admin'
 
+# Global variables
+DATA_DIR = str(os.environ['DATA_DIR'])
+USER = 'admin'
 CLASSES = [subdir for subdir in sorted(os.listdir(TEST_DIR)) if
            os.path.isdir(os.path.join(TEST_DIR, subdir))]
 CLASS_NUM = len(CLASSES)
 
-# Load initial data
-TRAIN_DATA, VAL_DATA, TEST_DATA = data_processing([0, [], 1], TRAIN_DIR, VAL_DIR, TEST_DIR)
+# Get training filenames
+path, train_folders, extra_files = next(os.walk(TRAIN_DIR))
+list_train_filename = []
+for class_folder in train_folders:
+    path, list_dirs, filenames = next(os.walk(TRAIN_DIR+'/'+class_folder))
+    for filename in filenames:
+        if filename.split('.')[-1] in ['tiff', 'tif', 'jpg', 'jpeg', 'png']:
+            list_train_filename.append(class_folder+'/'+filename)
 
+# Get testing filenames
+path, test_folders, extra_files = next(os.walk(TEST_DIR))
+list_test_filename = []
+for class_folder in test_folders:
+    path, list_dirs, filenames = next(os.walk(TEST_DIR+'/'+class_folder))
+    for filename in filenames:
+        if filename.split('.')[-1] in ['tiff', 'tif', 'jpg', 'jpeg', 'png']:
+            list_test_filename.append(class_folder+'/'+filename)
+
+# Loads first image
 try:
-    image = Image.open(TRAIN_DATA.filepaths[0])
+    image = Image.open(TRAIN_DIR+'/'+list_train_filename[0])
 except ValueError as e:
     print(e)
 fig = px.imshow(image, color_continuous_scale="gray")
 
+# Reactive component to display images
 DATA_PREPROCESS_WIDGET = [dcc.Graph(id='img-output',
                                     figure=fig),
                           dcc.Slider(id='img-slider',
@@ -59,6 +71,61 @@ DATA_PREPROCESS_WIDGET = [dcc.Graph(id='img-output',
                                               'placement': 'bottom'}),
                           ]
 
+# Extra parameters for transfer learning
+EXTRA_PARAMETERS = [
+            dbc.FormGroup([
+                dbc.Label('Pooling Options'),
+                dbc.RadioItems(
+                    options=[{'label': 'None', 'value': 'None'},
+                             {'label': 'Maximum', 'value': 'Maximum'},
+                             {'label': 'Average', 'value': 'Average'}],
+                    value='None'
+                )
+            ]),
+            dbc.FormGroup([
+                dbc.Label('Number of epochs'),
+                dcc.Slider(id='epochs',
+                           min=1,
+                           max=1000,
+                           tooltip={'always_visible': True,
+                                    'placement': 'bottom'})
+            ])]
+
+# Data augmentation widget
+DATA_AUG_WIDGET = [
+    dbc.FormGroup([
+        dbc.Label('Rotation Angle'),
+        dcc.Slider(id='rotation_angle',
+                   min=0,
+                   max=360,
+                   value=0,
+                   tooltip={'always_visible': True,
+                            'placement': 'bottom'})
+    ]),
+    dbc.FormGroup([
+        dbc.Label('Image Flip'),
+        dbc.RadioItems(
+           options=[
+               {'label': 'None', 'value': 'None'},
+               {'label': 'Vertical', 'value': 'vert'},
+               {'label': 'Horizontal', 'value': 'Horizontal'},
+               {'label': 'Both', 'value': 'Both'}
+           ],
+            value = 'None'
+        )
+    ]),
+    dbc.FormGroup([
+        dbc.Label('Batch Size'),
+        dcc.Slider(id='batch_size',
+                  min=16,
+                  max=128,
+                  value=32,
+                  step=16,
+                  tooltip={'always_visible': True,
+                           'placement': 'bottom'})
+    ])
+]
+
 # Job Status Display
 JOB_STATUS = dbc.Card(
     children=[
@@ -66,7 +133,7 @@ JOB_STATUS = dbc.Card(
             dbc.CardBody(
                 children=[
                     dash_table.DataTable(
-                        id='jobs_table',
+                        id='jobs-table',
                         columns=[
                             {'name': 'Job ID', 'id': 'job_id'},
                             {'name': 'Type', 'id': 'job_type'},
@@ -95,37 +162,47 @@ JOB_STATUS = dbc.Card(
         ]
     )
 
-#Sidebar content, this includes the titles with the splash-ml entry and query
-# button
+# Sidebar with actions, model, and parameters selection
 SIDEBAR = [
     dbc.Card(
         id="sidebar",
         children=[
-            dbc.CardHeader("Select an Action"),
+            dbc.CardHeader("Select an Action & a Model"),
             dbc.CardBody([
-                dcc.Dropdown(
-                    id='action',
-                    options=[
-                        {'label': 'Model Training', 'value': 'train_model'},
-                        {'label': 'Evaluate Model on Data', 'value': 'evaluate_model'},
-                        {'label': 'Test Prediction using Model', 'value': 'prediction_model'},
-                        # {'label': 'Test Prediction using Model (slider)',
-                        #  'value': 'prediction_slider'},
-                        {'label': 'Transfer Learning', 'value': 'transfer_learning'},
-                        {'label': 'View Images in Categories', 'value': 'view_images'},
-                        {'label': 'Save and Load Models', 'value': 'save_load'}],
-                    value='train_model')
+                dbc.FormGroup([
+                    dbc.Label('Action'),
+                    dcc.Dropdown(
+                        id='action',
+                        options=[
+                            {'label': 'Model Training', 'value': 'train_model'},
+                            {'label': 'Evaluate Model on Data', 'value': 'evaluate_model'},
+                            {'label': 'Test Prediction using Model', 'value': 'prediction_model'},
+                            {'label': 'Transfer Learning', 'value': 'transfer_learning'},
+                            # {'label': 'View Images in Categories', 'value': 'view_images'},
+                            # {'label': 'Save and Load Models', 'value': 'save_load'}
+                        ],
+                        value='train_model')
+                ]),
+                dbc.FormGroup([
+                    dbc.Label('Model'),
+                    dcc.Dropdown(
+                        id='model-selection',
+                        options=[
+                            {'label': 'Tensorflow Neural Networks', 'value': 'tf-NN'}],
+                        value='tf-NN')
                 ])
+            ])
         ]
     ),
     dbc.Card(
         children=[
             dbc.CardHeader("Parameters"),
-            dbc.CardBody(html.Div(id='app_parameters'))
+            dbc.CardBody(html.Div(id='app-parameters'))
         ]
     )
 ]
 
+# Loss plot for training
 LOSS_PLOT = dbc.Collapse(id='show-plot',
                          children=dbc.Card(
                              id="plot-card",
@@ -138,15 +215,14 @@ LOSS_PLOT = dbc.Collapse(id='show-plot',
                              ]
                          ))
 
-# Content section to the right of the sidebar.  This includes the upload bar
-# and graphs to be tagged once loaded into app.
+# App contents (right hand side)
 CONTENT = [dbc.Card(
     children=[
-        html.Div(id='app_content'),
-        html.Button('Execute',
-                    id='execute',
-                    n_clicks=0,
-                    className='m-1'),
+        html.Div(id='app-content'),
+        dbc.Button('Execute',
+                   id='execute',
+                   n_clicks=0,
+                   className='m-1'),
         html.Div(id='results'),
         dcc.Interval(id='interval', interval=5 * 1000, n_intervals=0)
     ]),
@@ -167,16 +243,28 @@ app.layout = html.Div([templates.header(),
 
 
 @app.callback(
-    Output('jobs_table', 'data'),
+    Output('jobs-table', 'data'),
     Output('show-plot', 'is_open'),
     Output('loss-plot', 'figure'),
     Output('results', 'children'),
     Input('interval', 'n_intervals'),
-    Input('jobs_table', 'selected_rows'),
+    Input('jobs-table', 'selected_rows'),
     Input('img-slider', 'value'),
     prevent_initial_call=True
 )
 def update_table(n, row, slider_value):
+    '''
+    This callback updates the job table, loss plot, and results according to the job status in the compute service.
+    Args:
+        n:              Time intervals that triggers this callback
+        row:            Selected row (job)
+        slider_value:   Image slider value (current image)
+    Returns:
+        jobs-table:     Updates the job table
+        show-plot:      Shows/hides the loss plot
+        loss-plot:      Updates the loss plot according to the job status (logs)
+        results:        Testing results (probability)
+    '''
     job_list = get_job(USER, 'mlcoach')
     data_table = []
     if job_list is not None:
@@ -217,25 +305,69 @@ def update_table(n, row, slider_value):
 
 
 @app.callback(
-    Output('app_parameters', 'children'),
-    Output('app_content', 'children'),
+    Output('app-parameters', 'children'),
+    Output('app-content', 'children'),
+    Input('model-selection', 'value'),
     Input('action', 'value'),
+    Input('jobs-table', 'selected_rows'),
+    State('jobs-table', 'data'),
     prevent_intial_call=True)
-def load_parameters_and_content(action_selection):
-    # get json file from local files -> change to model registry
-    with open('models/' + str(action_selection) + '.json') as f:
-        dash_schema = json.load(f)
-    parameters = generate_dash_widget(dash_schema)
-    if action_selection == 'train_model':
-        contents = DATA_PREPROCESS_WIDGET.copy()
+def load_parameters_and_content(model_selection, action_selection, row, data_table):
+    '''
+    This callback dynamically populates the parameters and contents of the website according to the selected action &
+    model.
+    Args:
+        model_selection:    Selected model (from content registry)
+        action_selection:   Selected action (pre-defined actions in MLCoach)
+        row:                Selected job (model)
+        jobs-table:         Data in table of jobs
+    Returns:
+        app-parameters:     Parameters according to the selected model & action
+        app-content:        Contents (right hand side) according to the selected model & action
+    '''
+    data = model_list_GET_call()
+    if model_selection == 'tf-NN' and action_selection == 'train_model':
+        conditions = {'model_name': 'Tensorflow-NN'}
+        model = [d for d in data if all((k in d and d[k] == v) for k, v in conditions.items())]
+        parameters = JSONParameterEditor(
+            _id={'type': 'parameter_editor'},       # pattern match _id (base id), name
+            json_blob=model[0]["gui_parameters"]
+        )
+        parameters.init_callbacks(app)
     if action_selection == 'evaluate_model':
-        contents = DATA_PREPROCESS_WIDGET.copy()
+        parameters = DATA_AUG_WIDGET.copy()
     if action_selection == 'prediction_model':
-        contents = DATA_PREPROCESS_WIDGET.copy()
-    return parameters.children, html.Div(contents)
+        parameters = DATA_AUG_WIDGET.copy()
+    if action_selection == 'transfer_learning':
+        num_layers = 0
+        disable_comp = True
+        try:
+            if data_table[row[0]]['job_type'] == 'train_model':
+                try:
+                    logs = data_table[row[0]]['job_logs']
+                    num_layers = int(logs[logs.find('Length: ')+8:logs.find(' layers')])
+                    disable_comp = False
+                except Exception as e:
+                    print(e)
+        except Exception as e:
+            print(e)
+        parameters = DATA_AUG_WIDGET.copy()
+        init_layer = dbc.FormGroup([
+            dbc.Label('Choose a trained model from the job list and select a layer to start training at below'),
+            dcc.Slider(id='init-layer',
+                       min=0,
+                       max=num_layers,
+                       disabled=disable_comp,
+                       step=1,
+                       value=0,
+                       tooltip={'always_visible': True,
+                                'placement': 'bottom'})
+        ])
+        parameters = parameters + EXTRA_PARAMETERS + [init_layer]
+    contents = DATA_PREPROCESS_WIDGET.copy()
+    return parameters, html.Div(contents)
 
 
-# Callback for train model
 @app.callback(
     [Output('img-output', 'figure'),
      Output('img-slider', 'max')],
@@ -244,13 +376,22 @@ def load_parameters_and_content(action_selection):
     prevent_intial_call=True
 )
 def refresh_image(img_ind, action_selection):
+    '''
+    This callback updates the image in the display
+    Args:
+        img_ind:            Index of image according to the slider value
+        action_selection:   Action selection (train vs test set)
+    Returns:
+        img-output:         Output figure
+        img-slider-max:     Maximum value of the slider according to the dataset (train vs test)
+    '''
     try:
-        if action_selection == 'train_model':
-            image = Image.open(TRAIN_DATA.filepaths[img_ind])
-            slider_max = len(TRAIN_DATA)-1
+        if action_selection in ['train_model', 'transfer_learning']:
+            image = Image.open(TRAIN_DIR + '/' + list_train_filename[img_ind])
+            slider_max = len(list_train_filename)-1
         else:
-            image = Image.open(TEST_DATA.filepaths[img_ind])
-            slider_max = len(TEST_DATA)-1
+            image = Image.open(TEST_DIR + '/' + list_test_filename[img_ind])
+            slider_max = len(TEST_DIR)-1
     except Exception as e:
         print(e)
     fig = px.imshow(image, color_continuous_scale="gray")
@@ -260,43 +401,50 @@ def refresh_image(img_ind, action_selection):
 @app.callback(
     Output('dummy-output', 'children'),
     Input('execute', 'n_clicks'),
-    [State({'type': 'labelmaker', 'name': ALL, 'layer': 'input'}, 'value'),
+    [State('app-parameters', 'children'),
      State('action', 'value'),
-     State('jobs_table', 'data'),
-     State('jobs_table', 'selected_rows')],
+     State('jobs-table', 'data'),
+     State('jobs-table', 'selected_rows')],
     prevent_intial_call=True)
-def execute(clicks, values, action_selection, job_data, row):
+def execute(clicks, children, action_selection, job_data, row):
+    '''
+    This callback submits a job request to the compute service according to the selected action & model
+    Args:
+        clicks:             Execute button triggers this callback
+        children:           Model parameters
+        action_selection:   Action selected
+        job_data:           Lists of jobs
+        row:                Selected row (job)
+    Returns:
+        None
+    '''
     if clicks > 0:
         contents = []
         experiment_id = str(uuid.uuid4())
         out_path = pathlib.Path('data/mlexchange_store/{}/{}'.format(USER, experiment_id))
         out_path.mkdir(parents=True, exist_ok=True)
+        input_params = {}
+        if bool(children):
+            for child in children['props']['children']:
+                key = child["props"]["children"][1]["props"]["id"]["param_key"]
+                value = child["props"]["children"][1]["props"]["value"]
+                input_params[key] = value
+        json_dict = input_params
         if action_selection == 'train_model':
-            data_aug_dict = {'rotation_angle': values[0],
-                             'image_flip': values[1],
-                             'batch_size': values[2]}
-            json_dict = {'data_augmentation': data_aug_dict,
-                          'pooling': values[3],
-                          'epochs': values[4],
-                          'nn_model': values[5]}
             command = "python3 src/train_model.py"
-            directories = [str(out_path)]
+            directories = [TRAIN_DIR, VAL_DIR, str(out_path)]
+        else:
+            training_exp_id = job_data[row[0]]['experiment_id']
+            in_path = pathlib.Path('data/mlexchange_store/{}/{}'.format(USER, training_exp_id))
         if action_selection == 'evaluate_model':
-            training_exp_id = job_data[row[0]]['experiment_id']
-            in_path = pathlib.Path('data/mlexchange_store/{}/{}'.format(USER, training_exp_id))
-            json_dict = {'rotation_angle': values[0],
-                         'image_flip': values[1],
-                         'batch_size': values[2]}
             command = "python3 src/evaluate_model.py"
-            directories = [str(in_path), str(out_path)]
+            directories = [TEST_DIR, str(in_path) + '/model.h5']
         if action_selection == 'prediction_model':
-            training_exp_id = job_data[row[0]]['experiment_id']
-            in_path = pathlib.Path('data/mlexchange_store/{}/{}'.format(USER, training_exp_id))
-            json_dict = {'rotation_angle': values[0],
-                         'image_flip': values[1],
-                         'batch_size': values[2]}
             command = "python3 src/predict_model.py"
-            directories = [str(in_path), str(out_path)]
+            directories = [TEST_DIR, str(in_path) + '/model.h5', str(out_path)]
+        if action_selection == 'transfer_learning':
+            command = "python3 src/transfer_learning.py"
+            directories = [TRAIN_DIR, VAL_DIR, str(in_path) + '/model.h5', str(out_path)]
         job = SimpleJob(user=USER,
                         job_type=action_selection,
                         description='',
@@ -320,8 +468,14 @@ def execute(clicks, values, action_selection, job_data, row):
     prevent_initial_call=True
 )
 def plot_loss(n):
+    '''
+    This callback plots the loss function
+    Args:
+        n:              Time interval that triggers this callback
+    Returns:
+        training_loss:  Loss plot
+    '''
     job = get_job(USER, 'mlcoach')
-    print(job)
     job = job[0]
     logs = job['container_logs']
     if logs:

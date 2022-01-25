@@ -10,18 +10,18 @@ services:
       dockerfile: "docker/Dockerfile"
     command: "python src/frontend.py"
     environment:
-      DATA_DIR: /data/tanchavez/Datasets/born
+      DATA_DIR: /Users/tanchavez/Documents/Dataset/born
     volumes:
       - ${PWD}:/app/work
-      - /data/tanchavez/Datasets/born:/app/work/data
+      - /Users/tanchavez/Documents/Dataset/born:/app/work/data
     ports:
       - "8050:8050"
     networks:
       - computing_api_default
-#      - model-regist_default
+      - model-regist_default
 
 networks:
   computing_api_default:
     external: true
-#  model-regist_default:
-#    external: true
+  model-regist_default:
+    external: true
