@@ -12,8 +12,6 @@ from helper_utils import TestCustomCallback, data_processing
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 
-# The following script tests the trained model given by the user, and returns the
-# results as the probability per class
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('test_dir', help='output directory')
@@ -31,7 +29,7 @@ if __name__ == '__main__':
     class_num = len(classes)
 
     test_generator = data_processing(data_parameters, test_dir, classes)
-    loaded_model = load_model(model_dir+'/model.h5')
+    loaded_model = load_model(model_dir)
     prob = loaded_model.predict(test_generator,
                                 verbose=0,
                                 callbacks=[TestCustomCallback()],)

@@ -11,8 +11,6 @@ from helper_utils import TrainCustomCallback, data_processing
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 
-# creates a model based on the options given by the user in the streamlit
-# interface and trains it off of train_generator data
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('train_dir', help='output directory')
@@ -50,8 +48,8 @@ if __name__ == '__main__':
                   loss='categorical_crossentropy',
                   metrics=['accuracy'])
     model.summary()
-    tf.keras.utils.plot_model(model, 'model_layout.png', show_shapes=True)  # plot NN
-    print('Length:', len(model.layers), 'layers')                           # number of layers
+    tf.keras.utils.plot_model(model, out_dir+'/model_layout.png', show_shapes=True)     # plot NN
+    print('Length:', len(model.layers), 'layers')                                       # number of layers
 
     # fit model while also keeping track of data for dash plots.
     model.fit(train_generator,

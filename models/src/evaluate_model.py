@@ -8,8 +8,6 @@ from model_validation import DataAugmentationParams
 from helper_utils import data_processing
 
 
-# creates a model based on the options given by the user in the streamlit
-# interface and trains it off of train_generator data
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('test_dir', help='output directory')
@@ -26,7 +24,7 @@ if __name__ == '__main__':
 
     test_generator = data_processing(parameters, test_dir, classes)
 
-    loaded_model = load_model(model_dir+'/model.h5')
+    loaded_model = load_model(model_dir)
     results = loaded_model.evaluate(test_generator,
                                     verbose=False)
     print("test loss, test acc: " + str(results[0]) + ", " + str(results[1]), flush=True)

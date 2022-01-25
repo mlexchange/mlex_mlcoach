@@ -115,4 +115,3 @@ def data_processing(parameters, data_dir, classes):
                                           shuffle=True)
         return data_generator
     return []
-
