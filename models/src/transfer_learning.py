@@ -35,7 +35,7 @@ if __name__ == '__main__':
     class_num = len(classes)
 
     train_generator = data_processing(data_parameters, train_dir, classes)
-    if valid_dir is not 'None':
+    if valid_dir != 'None':
         valid_generator = data_processing(data_parameters, valid_dir, classes)
     else:
         valid_generator = []
