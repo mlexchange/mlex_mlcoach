@@ -1,6 +1,6 @@
 from enum import Enum
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import Optional
 
 
 class Pooling(str, Enum):
@@ -25,14 +25,25 @@ class NNModel(str, Enum):
     densenet169 = 'DenseNet169'
 
 
+class ImageFlip(str, Enum):
+    none = 'None'
+    vert = 'Vertical'
+    horiz = 'Horizontal'
+    both = 'Both'
+
+
 class DataAugmentationParams(BaseModel):
     rotation_angle: int = Field(description='rotation angle')
-    image_flip: List[str] = Field(description='vertical and horizontal flip respectively')
+    image_flip: ImageFlip
     batch_size: int = Field(description='batch size')
 
 
-class TrainingParams(BaseModel):
-    data_augmentation: DataAugmentationParams
+class TrainingParams(DataAugmentationParams):
     pooling: Pooling
     epochs: int = Field(description='number of epochs')
     nn_model: NNModel
+
+
+class TransferLearningParams(TrainingParams):
+    init_layer: int = Field(description='initial layer')
+    nn_model: Optional[NNModel]
