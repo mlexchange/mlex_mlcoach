@@ -427,12 +427,16 @@ def execute(clicks, children, action_selection, job_data, row):
         if bool(children):
             try:
                 children = children[0]
-            except Exception as err:
-                print(err)
-            for child in children['props']['children']:
-                key = child["props"]["children"][1]["props"]["id"]["param_key"]
-                value = child["props"]["children"][1]["props"]["value"]
-                input_params[key] = value
+                for count, child in enumerate(children['props']['children']):
+                    if count%2 == 1:
+                        key = child["props"]["id"]
+                        value = child["props"]["value"]
+                        input_params[key] = value
+            except Exception:
+                for child in children['props']['children']:
+                    key = child["props"]["children"][1]["props"]["id"]["param_key"]
+                    value = child["props"]["children"][1]["props"]["value"]
+                    input_params[key] = value
         json_dict = input_params
         if action_selection == 'train_model':
             command = "python3 src/train_model.py"
