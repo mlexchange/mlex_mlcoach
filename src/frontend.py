@@ -427,17 +427,20 @@ def execute(clicks, children, action_selection, job_data, row):
         input_params = {}
         if bool(children):
             try:
-                children = children[0]
-                for count, child in enumerate(children['props']['children']):
-                    print(child)
-                    if count%2 == 1:
-                        key = child["props"]["id"]
-                        value = child["props"]["value"]
-                        input_params[key] = value
-                print(input_params)
-            except Exception:
                 for child in children['props']['children']:
                     key = child["props"]["children"][1]["props"]["id"]["param_key"]
+                    value = child["props"]["children"][1]["props"]["value"]
+                    input_params[key] = value
+                # for count, child in enumerate(children['props']['children']):
+                #     print(child)
+                #     if count%2 == 1:
+                #         key = child["props"]["id"]
+                #         value = child["props"]["value"]
+                #         input_params[key] = value
+                # print(input_params)
+            except Exception:
+                for child in children:
+                    key = child["props"]["children"][1]["props"]["id"]
                     value = child["props"]["children"][1]["props"]["value"]
                     input_params[key] = value
         json_dict = input_params
