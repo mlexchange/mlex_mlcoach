@@ -425,6 +425,10 @@ def execute(clicks, children, action_selection, job_data, row):
         out_path.mkdir(parents=True, exist_ok=True)
         input_params = {}
         if bool(children):
+            try:
+                children = children[0]
+            except Exception as err:
+                print(err)
             for child in children['props']['children']:
                 key = child["props"]["children"][1]["props"]["id"]["param_key"]
                 value = child["props"]["children"][1]["props"]["value"]
