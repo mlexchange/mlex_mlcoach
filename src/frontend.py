@@ -449,7 +449,7 @@ def execute(clicks, children, action_selection, job_data, row):
                         job_type=action_selection,
                         description='',
                         deploy_location='local',
-                        gpu=False,
+                        gpu=True,
                         data_uri='{}'.format(DATA_DIR),
                         container_uri='mlexchange/labelmaker-functions',
                         container_cmd=command,
@@ -486,4 +486,4 @@ def plot_loss(n):
 
 
 if __name__ == '__main__':
-    app.run_server(debug=True, host='0.0.0.0')#, dev_tools_ui=False)
+    app.run_server(debug=True, host='0.0.0.0', port=8052)#, dev_tools_ui=False)
