@@ -105,12 +105,13 @@ DATA_AUG_WIDGET = [
     dbc.FormGroup([
         dbc.Label('Image Flip'),
         dbc.RadioItems(
-           options=[
+            id='image_flip',
+            options=[
                {'label': 'None', 'value': 'None'},
                {'label': 'Vertical', 'value': 'vert'},
                {'label': 'Horizontal', 'value': 'Horizontal'},
                {'label': 'Both', 'value': 'Both'}
-           ],
+            ],
             value = 'None'
         )
     ]),
@@ -428,10 +429,12 @@ def execute(clicks, children, action_selection, job_data, row):
             try:
                 children = children[0]
                 for count, child in enumerate(children['props']['children']):
+                    print(child)
                     if count%2 == 1:
                         key = child["props"]["id"]
                         value = child["props"]["value"]
                         input_params[key] = value
+                print(input_params)
             except Exception:
                 for child in children['props']['children']:
                     key = child["props"]["children"][1]["props"]["id"]["param_key"]
