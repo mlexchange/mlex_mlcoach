@@ -294,9 +294,9 @@ def update_table(n, row, slider_value):
                                        style={'width': '100%'},
                                        className='mb-2')
             if data_table[row[0]]['job_type'] == 'prediction_model':
-                start = log.find('class probability')
+                start = log.find('filename')
                 if start > -1 and len(log) > start + 10:
-                    text = get_class_prob(log, start, slider_value, CLASSES)
+                    text = get_class_prob(log, start, list_test_filename[slider_value])
                 else:
                     text = ''
                 element = dcc.Textarea(value=text,

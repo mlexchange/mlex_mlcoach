@@ -61,15 +61,15 @@ def get_job(user, mlex_app, job_type=None, deploy_location=None):
     return data
 
 
-def get_class_prob(log, start, slider_value, classes):
+def get_class_prob(log, start, filename):
     end = log.find('Prediction process completed')
     if end == -1:
         end = len(log)
     log = log[start:end]
     df = pd.read_csv(StringIO(log.replace('\n\n', '\n')), sep=' ')
     try:
-        res = df.iloc[slider_value]
-        return 'Class: '+ classes[int(res['class'])] + '\nProbability: ' + str(res['probability'])
+        res = df.loc[df['filename'] == filename]    # search results for the selected file
+        return res.to_string(index=False)
     except Exception as err:
         return ''
 
