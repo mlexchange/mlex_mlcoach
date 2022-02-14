@@ -392,7 +392,7 @@ def refresh_image(img_ind, action_selection):
             slider_max = len(list_train_filename)-1
         else:
             image = Image.open(TEST_DIR + '/' + list_test_filename[img_ind])
-            slider_max = len(TEST_DIR)-1
+            slider_max = len(list_test_filename)-1
     except Exception as e:
         print(e)
     fig = px.imshow(image, color_continuous_scale="gray")
