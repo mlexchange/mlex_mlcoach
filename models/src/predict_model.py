@@ -35,6 +35,6 @@ if __name__ == '__main__':
     prob = loaded_model.predict(test_generator,
                                 verbose=0,
                                 callbacks=[TestCustomCallback(classes)])
-    df_prob = pd.DataFrame(prob, columns=classes)
+    df_prob = pd.DataFrame(prob)
     df_results = pd.concat([df_files,df_prob], axis=1)
     df_results.to_csv(out_dir + '/results.csv', index=False)

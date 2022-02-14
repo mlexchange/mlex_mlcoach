@@ -43,12 +43,10 @@ class TestCustomCallback(tf.keras.callbacks.Callback):
     def on_predict_batch_end(self, batch, logs=None):
         out = logs['outputs']
         if batch==0:
-            msg = ['filename'] + self.classes
-            print(' '.join(msg) + '\n', flush=True)
-        filenames = batch.filenames
+            print(' '.join(self.classes) + '\n', flush=True)
         for row in range(out.shape[0]):         # when batch>1
             prob = np.char.mod('%f', out[row,:])
-            print(filenames[row]+ ' ' + ' '.join(prob) + '\n', flush=True)
+            print(' '.join(prob) + '\n', flush=True)
 
     def on_predict_end(self, logs=None):
         print('Prediction process completed', flush=True)
