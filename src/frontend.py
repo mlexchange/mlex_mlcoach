@@ -213,7 +213,15 @@ CONTENT = [dbc.Card(
                                                 className='m-1',
                                                 style={'width': '95%', 'justify-content': 'center'})],
                          style={'align-items': 'center', 'justify-content': 'center'}),
-                 dbc.Col(html.Div(id='results'))
+                 dbc.Col(html.Div(id='results',
+                                  children=dbc.Card(children=[
+                                      dbc.CardHeader(id='result-title'),
+                                      dbc.CardBody([
+                                          dcc.Graph(id='result-plot',
+                                                    style={'width': '100%'})    #, 'height': '20rem'
+                                      ])]
+                                  )
+                                  ))
                  ]),
         dcc.Interval(id='interval', interval=5 * 1000, n_intervals=0)
     ]),
@@ -235,7 +243,8 @@ app.layout = html.Div([templates.header(),
 
 @app.callback(
     Output('jobs-table', 'data'),
-    Output('results', 'children'),
+    Output('result-title', 'children'),
+    Output('result-plot', 'figure'),
     Input('interval', 'n_intervals'),
     Input('jobs-table', 'selected_rows'),
     Input('img-slider', 'value'),
@@ -275,34 +284,35 @@ def update_table(n, row, slider_value):
                 start = log.find('epoch')
                 if start > -1 and len(log) > start + 5:
                     fig = generate_figure(log, start)
-                element = dbc.Card(children=[
-                                       dbc.CardHeader("Loss Plot"),
-                                       dbc.CardBody([
-                                           dcc.Graph(figure=fig,
-                                                     style={'width': '100%', 'height': '20rem'})
-                                       ])]
-                                   )
+                title = 'Loss PLot'
+                # element = dbc.Card(children=[
+                #                        dbc.CardHeader("Loss Plot"),
+                #                        dbc.CardBody([
+                #                            dcc.Graph(figure=fig,
+                #                                      style={'width': '100%', 'height': '20rem'})
+                #                        ])]
+                #                    )
             if data_table[row[0]]['job_type'] == 'evaluate_model':
-                element = dcc.Textarea(value=log,
-                                       style={'width': '100%'},
-                                       className='mb-2')
+                title = 'Evaluation'
+                # element = dcc.Textarea(value=log,
+                #                        style={'width': '100%'},
+                #                        className='mb-2')
             if data_table[row[0]]['job_type'] == 'prediction_model':
+                title = 'Prediction'
                 start = log.find('filename')
                 if start > -1 and len(log) > start + 10:
                     fig = get_class_prob(log, start, list_test_filename[slider_value])
-                    element = dbc.Card(children=[
-                                           dbc.CardHeader("Prediction"),
-                                           dbc.CardBody([
-                                               dcc.Graph(figure=fig,
-                                                         style={'width': '100%', 'height': '20rem'})
-                                           ])]
-                                       )
-                else:
-                    text = ''
-                element = dcc.Textarea(value=text,
-                                       style={'width': '100%'},
-                                       className='mb-2')
-    return data_table, element
+                    # element = dbc.Card(children=[
+                    #                        dbc.CardHeader("Prediction"),
+                    #                        dbc.CardBody([
+                    #                            dcc.Graph(figure=fig,
+                    #                                      style={'width': '100%', 'height': '20rem'})
+                    #                        ])]
+                    #                    )
+                # element = dcc.Textarea(value=text,
+                #                        style={'width': '100%'},
+                #                        className='mb-2')
+    return data_table, title, fig
 
 
 @app.callback(
