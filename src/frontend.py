@@ -203,50 +203,38 @@ SIDEBAR = [
     )
 ]
 
-# Loss plot for training
-LOSS_PLOT = dbc.Collapse(id='show-plot',
-                         children=dbc.Card(
-                             id="plot-card",
-                             children=[
-                                 dbc.CardHeader("Loss Plot"),
-                                 dbc.CardBody([
-                                     dcc.Graph(id='loss-plot',
-                                               style={'width': '100%', 'height': '20rem'})
-                                 ])
-                             ]
-                         ))
-
 # App contents (right hand side)
 CONTENT = [dbc.Card(
     children=[
-        html.Div(id='app-content'),
-        dbc.Button('Execute',
-                   id='execute',
-                   n_clicks=0,
-                   className='m-1'),
-        html.Div(id='results'),
+        dbc.Row([dbc.Col(children = [html.Div(id='app-content'),
+                                     dbc.Button('Execute',
+                                                id='execute',
+                                                n_clicks=0,
+                                                className='m-1',
+                                                style={'width': '95%', 'justify-content': 'center'})],
+                         style={'align-items': 'center', 'justify-content': 'center'}),
+                 dbc.Col(html.Div(id='results'))
+                 ]),
         dcc.Interval(id='interval', interval=5 * 1000, n_intervals=0)
     ]),
-    LOSS_PLOT,
     JOB_STATUS
 ]
 
 # Setting up initial webpage layout
 app.layout = html.Div([templates.header(),
                        dbc.Container(
-                           dbc.Row([dbc.Col(SIDEBAR, width=4),
+                           dbc.Row([dbc.Col(SIDEBAR, width=3),
                                     dbc.Col(CONTENT,
-                                            width=8,
+                                            width=9,
                                             style={'align-items': 'center', 'justify-content': 'center'}),
                                     html.Div(id='dummy-output')
-                                   ])
+                                   ]),
+                           fluid=True
                        )])
 
 
 @app.callback(
     Output('jobs-table', 'data'),
-    Output('show-plot', 'is_open'),
-    Output('loss-plot', 'figure'),
     Output('results', 'children'),
     Input('interval', 'n_intervals'),
     Input('jobs-table', 'selected_rows'),
@@ -279,7 +267,6 @@ def update_table(n, row, slider_value):
                                   job_logs=job['container_logs'])
                               )
     element = []
-    show = False
     fig = go.Figure(go.Scatter(x=[], y=[]))
     if row:
         log = data_table[row[0]]["job_logs"]
@@ -288,7 +275,13 @@ def update_table(n, row, slider_value):
                 start = log.find('epoch')
                 if start > -1 and len(log) > start + 5:
                     fig = generate_figure(log, start)
-                    show = True
+                element = dbc.Card(children=[
+                                       dbc.CardHeader("Loss Plot"),
+                                       dbc.CardBody([
+                                           dcc.Graph(figure=fig,
+                                                     style={'width': '100%', 'height': '20rem'})
+                                       ])]
+                                   )
             if data_table[row[0]]['job_type'] == 'evaluate_model':
                 element = dcc.Textarea(value=log,
                                        style={'width': '100%'},
@@ -296,13 +289,20 @@ def update_table(n, row, slider_value):
             if data_table[row[0]]['job_type'] == 'prediction_model':
                 start = log.find('filename')
                 if start > -1 and len(log) > start + 10:
-                    text = get_class_prob(log, start, list_test_filename[slider_value])
+                    fig = get_class_prob(log, start, list_test_filename[slider_value])
+                    element = dbc.Card(children=[
+                                           dbc.CardHeader("Prediction"),
+                                           dbc.CardBody([
+                                               dcc.Graph(figure=fig,
+                                                         style={'width': '100%', 'height': '20rem'})
+                                           ])]
+                                       )
                 else:
                     text = ''
                 element = dcc.Textarea(value=text,
                                        style={'width': '100%'},
                                        className='mb-2')
-    return data_table, show, fig, element
+    return data_table, element
 
 
 @app.callback(
@@ -395,7 +395,19 @@ def refresh_image(img_ind, action_selection):
             slider_max = len(list_test_filename)-1
     except Exception as e:
         print(e)
-    fig = px.imshow(image, color_continuous_scale="gray")
+    fig = px.imshow(image) #, color_continuous_scale="gray")
+    fig.update_xaxes(
+        showgrid=False,
+        showticklabels=False,
+        zeroline=False
+    )
+    fig.update_yaxes(
+        showgrid=False,
+        showticklabels=False,
+        zeroline=False
+    )
+    fig.update_layout(margin=dict(l=0, r=0, t=10, b=10))
+    fig.update_traces(dict(showscale=False, coloraxis=None))
     return fig, slider_max
 
 
@@ -500,4 +512,4 @@ def plot_loss(n):
 
 
 if __name__ == '__main__':
-    app.run_server(debug=True, host='0.0.0.0', port=8052)#, dev_tools_ui=False)
+    app.run_server(debug=True, host='0.0.0.0', port=8050)#, dev_tools_ui=False)

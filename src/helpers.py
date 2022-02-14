@@ -69,9 +69,10 @@ def get_class_prob(log, start, filename):
     df = pd.read_csv(StringIO(log.replace('\n\n', '\n')), sep=' ')
     try:
         res = df.loc[df['filename'] == filename]    # search results for the selected file
-        return res.to_string(index=False)
+        fig = px.bar(res.iloc[: , 1:], x='class', y='probability')
+        return fig #res.to_string(index=False)
     except Exception as err:
-        return ''
+        return go.Figure(go.Scatter(x=[], y=[]))
 
 
 # Generate loss plot
