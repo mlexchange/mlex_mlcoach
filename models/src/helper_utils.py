@@ -33,8 +33,8 @@ class TrainCustomCallback(tf.keras.callbacks.Callback):
 
 # keras callbacks for model training.  Threads while keras functions are running
 # so that you can see training or evaluation of the model in progress
-class TestCustomCallback(tf.keras.callbacks.Callback, classes=None):
-    def __init__(self, classes):
+class TestCustomCallback(tf.keras.callbacks.Callback):
+    def __init__(self, classes=None):
         self.classes = classes
 
     def on_predict_begin(self, logs=None):
