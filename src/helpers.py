@@ -92,6 +92,18 @@ def generate_figure(log, start):
         return go.Figure(go.Scatter(x=[], y=[]))
 
 
+def plot_figure(image):
+    fig = px.imshow(image, height=350)
+    fig.update_xaxes(showgrid=False,
+                     showticklabels=False,
+                     zeroline=False)
+    fig.update_yaxes(showgrid=False,
+                     showticklabels=False,
+                     zeroline=False)
+    fig.update_layout(margin=dict(l=0, r=0, t=0, b=10))
+    fig.update_traces(dict(showscale=False, coloraxis=None))
+    return fig
+
 # saves model as an .h5 file on local disk
 def save_model(model, save_path='my_model.h5'):
     # save model

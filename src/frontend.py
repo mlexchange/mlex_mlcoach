@@ -15,7 +15,7 @@ import plotly.graph_objects as go
 import uuid
 
 from helpers import SimpleJob
-from helpers import get_job, generate_figure, get_class_prob, model_list_GET_call
+from helpers import get_job, generate_figure, get_class_prob, model_list_GET_call, plot_figure
 from kwarg_editor import JSONParameterEditor
 import templates
 
@@ -59,7 +59,7 @@ try:
     image = Image.open(TRAIN_DIR+'/'+list_train_filename[0])
 except ValueError as e:
     print(e)
-fig = px.imshow(image, color_continuous_scale="gray")
+fig = plot_figure(image)
 
 # Reactive component to display images
 DATA_PREPROCESS_WIDGET = [dcc.Graph(id='img-output',
@@ -204,25 +204,26 @@ SIDEBAR = [
 ]
 
 # App contents (right hand side)
-CONTENT = [dbc.Card(
-    children=[
-        dbc.Row([dbc.Col(children = [html.Div(id='app-content'),
-                                     dbc.Button('Execute',
-                                                id='execute',
-                                                n_clicks=0,
-                                                className='m-1',
-                                                style={'width': '95%', 'justify-content': 'center'})],
-                         style={'align-items': 'center', 'justify-content': 'center'}),
-                 dbc.Col(html.Div(id='results',
-                                  children=dbc.Card(children=[
-                                      dbc.CardHeader(id='result-title'),
-                                      dbc.CardBody([
-                                          dcc.Graph(id='result-plot',
-                                                    style={'width': '100%'})    #, 'height': '20rem'
-                                      ])]
-                                  )
-                                  ))
-                 ]),
+CONTENT = [
+    html.Div([dbc.Row([
+        dbc.Col(dbc.Card(
+            children=[dbc.CardHeader('Data Overview'),
+                      dbc.CardBody(children=[html.Div(id='app-content'),
+                                             dbc.Button('Execute',
+                                                        id='execute',
+                                                        n_clicks=0,
+                                                        className='m-1',
+                                                        style={'width': '95%', 'justify-content': 'center'})
+                                             ],
+                                   style={'height': '30rem'})
+                      ])),
+        dbc.Col(dbc.Card(
+            id = 'results',
+            children=[dbc.CardHeader('Results'),
+                      dbc.CardBody(children = [dcc.Graph(id='results-plot',
+                                                        style={'display': 'none'})],
+                                   style={'height': '30rem'})],
+        ))]),
         dcc.Interval(id='interval', interval=5 * 1000, n_intervals=0)
     ]),
     JOB_STATUS
@@ -243,8 +244,8 @@ app.layout = html.Div([templates.header(),
 
 @app.callback(
     Output('jobs-table', 'data'),
-    Output('result-title', 'children'),
-    Output('result-plot', 'figure'),
+    Output('results-plot', 'figure'),
+    Output('results-plot', 'style'),
     Input('interval', 'n_intervals'),
     Input('jobs-table', 'selected_rows'),
     Input('img-slider', 'value'),
@@ -275,7 +276,7 @@ def update_table(n, row, slider_value):
                                   experiment_id=job['container_kwargs']['experiment_id'],
                                   job_logs=job['container_logs'])
                               )
-    element = []
+    style = {'display': 'none'}
     fig = go.Figure(go.Scatter(x=[], y=[]))
     if row:
         log = data_table[row[0]]["job_logs"]
@@ -284,35 +285,15 @@ def update_table(n, row, slider_value):
                 start = log.find('epoch')
                 if start > -1 and len(log) > start + 5:
                     fig = generate_figure(log, start)
-                title = 'Loss PLot'
-                # element = dbc.Card(children=[
-                #                        dbc.CardHeader("Loss Plot"),
-                #                        dbc.CardBody([
-                #                            dcc.Graph(figure=fig,
-                #                                      style={'width': '100%', 'height': '20rem'})
-                #                        ])]
-                #                    )
+                    style = {'width': '100%', 'display': 'block'}
             if data_table[row[0]]['job_type'] == 'evaluate_model':
-                title = 'Evaluation'
-                # element = dcc.Textarea(value=log,
-                #                        style={'width': '100%'},
-                #                        className='mb-2')
+                style = {'width': '100%', 'display': 'block'}
             if data_table[row[0]]['job_type'] == 'prediction_model':
-                title = 'Prediction'
                 start = log.find('filename')
                 if start > -1 and len(log) > start + 10:
                     fig = get_class_prob(log, start, list_test_filename[slider_value])
-                    # element = dbc.Card(children=[
-                    #                        dbc.CardHeader("Prediction"),
-                    #                        dbc.CardBody([
-                    #                            dcc.Graph(figure=fig,
-                    #                                      style={'width': '100%', 'height': '20rem'})
-                    #                        ])]
-                    #                    )
-                # element = dcc.Textarea(value=text,
-                #                        style={'width': '100%'},
-                #                        className='mb-2')
-    return data_table, title, fig
+                    style = {'width': '100%', 'display': 'block'}
+    return data_table, fig, style
 
 
 @app.callback(
@@ -405,19 +386,7 @@ def refresh_image(img_ind, action_selection):
             slider_max = len(list_test_filename)-1
     except Exception as e:
         print(e)
-    fig = px.imshow(image) #, color_continuous_scale="gray")
-    fig.update_xaxes(
-        showgrid=False,
-        showticklabels=False,
-        zeroline=False
-    )
-    fig.update_yaxes(
-        showgrid=False,
-        showticklabels=False,
-        zeroline=False
-    )
-    fig.update_layout(margin=dict(l=0, r=0, t=10, b=10))
-    fig.update_traces(dict(showscale=False, coloraxis=None))
+    fig = plot_figure(image)
     return fig, slider_max
 
 
