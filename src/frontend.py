@@ -213,17 +213,18 @@ CONTENT = [
                                                         id='execute',
                                                         n_clicks=0,
                                                         className='m-1',
-                                                        style={'width': '95%', 'justify-content': 'center'})
+                                                        style={'width': '100%', 'justify-content': 'center'})
                                              ],
                                    style={'height': '30rem'})
-                      ])),
+                      ]),
+            width=6),
         dbc.Col(dbc.Card(
             id = 'results',
             children=[dbc.CardHeader('Results'),
                       dbc.CardBody(children = [dcc.Graph(id='results-plot',
                                                         style={'display': 'none'})],
-                                   style={'height': '30rem'})],
-        ))]),
+                                   style={'height': '30rem'})]),
+            width=6)]),
         dcc.Interval(id='interval', interval=5 * 1000, n_intervals=0)
     ]),
     JOB_STATUS
@@ -491,4 +492,4 @@ def plot_loss(n):
 
 
 if __name__ == '__main__':
-    app.run_server(debug=True, host='0.0.0.0', port=8050)#, dev_tools_ui=False)
+    app.run_server(debug=True, host='0.0.0.0', port=8052)#, dev_tools_ui=False)
