@@ -28,7 +28,7 @@ if __name__ == '__main__':
     classes = [subdir for subdir in sorted(os.listdir(test_dir)) if os.path.isdir(os.path.join(test_dir, subdir))]
     class_num = len(classes)
 
-    test_generator = data_processing(data_parameters, test_dir, classes)
+    test_generator = data_processing(data_parameters, test_dir, classes, False)
     loaded_model = load_model(model_dir)
     prob = loaded_model.predict(test_generator,
                                 verbose=0,

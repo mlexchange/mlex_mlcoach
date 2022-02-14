@@ -52,7 +52,7 @@ COLOR_MODE = 'rgb'          # fixed due to TF models
 
 
 # Data Augmentation + Batch Size
-def data_processing(parameters, data_dir, classes):
+def data_processing(parameters, data_dir, classes, shuffle):
     rotation_angle = parameters.rotation_angle
     image_flip = parameters.image_flip
     if image_flip=='None':
@@ -84,7 +84,9 @@ def data_processing(parameters, data_dir, classes):
                 batch_size=batch_size,
                 color_mode=COLOR_MODE,
                 seed=seed,
-                class_mode='categorical')
+                class_mode='categorical',
+                shuffle=shuffle
+            )
 
         elif data_type == '.npy':
             data_path = first_data
@@ -112,6 +114,6 @@ def data_processing(parameters, data_dir, classes):
             data_generator = datagen.flow(x=x,
                                           y=y,
                                           batch_size=batch_size,
-                                          shuffle=True)
+                                          shuffle=shuffle)
         return data_generator
     return []

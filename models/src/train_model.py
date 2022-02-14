@@ -29,10 +29,10 @@ if __name__ == '__main__':
     classes = [subdir for subdir in sorted(os.listdir(train_dir)) if os.path.isdir(os.path.join(train_dir, subdir))]
     class_num = len(classes)
 
-    train_generator = data_processing(data_parameters, train_dir, classes)
+    train_generator = data_processing(data_parameters, train_dir, classes, True)
     # check if there is a validation set
     if valid_dir != 'None':
-        valid_generator = data_processing(data_parameters, valid_dir, classes)
+        valid_generator = data_processing(data_parameters, valid_dir, classes, True)
     else:
         valid_generator = []
 
