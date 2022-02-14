@@ -34,19 +34,23 @@ class TrainCustomCallback(tf.keras.callbacks.Callback):
 # keras callbacks for model training.  Threads while keras functions are running
 # so that you can see training or evaluation of the model in progress
 class TestCustomCallback(tf.keras.callbacks.Callback):
-    def __init__(self, classes=None):
+    def __init__(self, filenames=None, classes=None):
         self.classes = classes
+        self.filenames = filenames
 
     def on_predict_begin(self, logs=None):
         print('Prediction process started\n', flush=True)
 
     def on_predict_batch_end(self, batch, logs=None):
         out = logs['outputs']
+        batch_size = out.shape[0]
         if batch==0:
-            print(' '.join(self.classes) + '\n', flush=True)
-        for row in range(out.shape[0]):         # when batch>1
+            msg = ['filename'] + self.classes
+            print(' '.join(msg) + '\n', flush=True)
+        filenames = self.filenames[batch*batch_size:(batch+1)*batch_size]
+        for row in range(batch_size):         # when batch>1
             prob = np.char.mod('%f', out[row,:])
-            print(' '.join(prob) + '\n', flush=True)
+            print(filenames[row]+ ' ' + ' '.join(prob) + '\n', flush=True)
 
     def on_predict_end(self, logs=None):
         print('Prediction process completed', flush=True)

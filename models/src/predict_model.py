@@ -30,11 +30,12 @@ if __name__ == '__main__':
     class_num = len(classes)
 
     test_generator = data_processing(data_parameters, test_dir, classes, False)
-    df_files = pd.DataFrame(test_generator.filenames, columns=['filename'])
+    test_filenames = test_generator.filenames
+    df_files = pd.DataFrame(test_filenames, columns=['filename'])
     loaded_model = load_model(model_dir)
     prob = loaded_model.predict(test_generator,
                                 verbose=0,
-                                callbacks=[TestCustomCallback(classes)])
+                                callbacks=[TestCustomCallback(test_filenames, classes)])
     df_prob = pd.DataFrame(prob)
     df_results = pd.concat([df_files,df_prob], axis=1)
     df_results.to_csv(out_dir + '/results.csv', index=False)
