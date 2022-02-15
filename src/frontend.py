@@ -159,8 +159,14 @@ JOB_STATUS = dbc.Card(
                         style_table={'height': '18rem', 'overflowY': 'auto', 'overflowX': 'scroll'}
                     )
                 ],
-            )
-        ]
+            ),
+        dbc.Modal([
+            dbc.ModalHeader("Job Logs"),
+            dbc.ModalBody(id='log-display'),
+            dbc.ModalFooter(dbc.Button("Close", id="modal-close", className="ml-auto")),
+            ],
+            id="log-modal")
+    ]
     )
 
 # Sidebar with actions, model, and parameters selection
@@ -222,7 +228,11 @@ CONTENT = [
             id = 'results',
             children=[dbc.CardHeader('Results'),
                       dbc.CardBody(children = [dcc.Graph(id='results-plot',
-                                                        style={'display': 'none'})],
+                                                        style={'display': 'none'}),
+                                               dcc.Textarea(id='results-text',
+                                                            style={'display': 'none'},
+                                                            className='mb-2')
+                                               ],
                                    style={'height': '30rem'})]),
             width=7)]),
         dcc.Interval(id='interval', interval=5 * 1000, n_intervals=0)
@@ -247,12 +257,18 @@ app.layout = html.Div([templates.header(),
     Output('jobs-table', 'data'),
     Output('results-plot', 'figure'),
     Output('results-plot', 'style'),
+    Output('results-text', 'value'),
+    Output('results-text', 'style'),
+    Output('log-modal', 'is_open'),
+    Output('log-display', 'children'),
     Input('interval', 'n_intervals'),
     Input('jobs-table', 'selected_rows'),
+    Input('jobs-table', 'active_cell'),
     Input('img-slider', 'value'),
+    Input('modal-close', 'n_clicks'),
     prevent_initial_call=True
 )
-def update_table(n, row, slider_value):
+def update_table(n, row, active_cell, slider_value, close_clicks):
     '''
     This callback updates the job table, loss plot, and results according to the job status in the compute service.
     Args:
@@ -265,6 +281,9 @@ def update_table(n, row, slider_value):
         loss-plot:      Updates the loss plot according to the job status (logs)
         results:        Testing results (probability)
     '''
+    changed_id = [p['prop_id'] for p in dash.callback_context.triggered][0]
+    if 'close-error' in changed_id:
+        return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, False, dash.no_update
     job_list = get_job(USER, 'mlcoach')
     data_table = []
     if job_list is not None:
@@ -277,7 +296,17 @@ def update_table(n, row, slider_value):
                                   experiment_id=job['container_kwargs']['experiment_id'],
                                   job_logs=job['container_logs'])
                               )
-    style = {'display': 'none'}
+    is_open = False
+    log_display = []
+    if active_cell:
+        row_log = active_cell["row"]
+        col_log = active_cell["column"]
+        if col_log == 'job_logs':
+            is_open = True
+            log_display = data_table[row_log]["job_logs"]
+    style_fig = {'display': 'none'}
+    style_text = {'display': 'none'}
+    val = ''
     fig = go.Figure(go.Scatter(x=[], y=[]))
     if row:
         log = data_table[row[0]]["job_logs"]
@@ -286,15 +315,16 @@ def update_table(n, row, slider_value):
                 start = log.find('epoch')
                 if start > -1 and len(log) > start + 5:
                     fig = generate_figure(log, start)
-                    style = {'width': '100%', 'display': 'block'}
+                    style_fig = {'width': '100%', 'display': 'block'}
             if data_table[row[0]]['job_type'] == 'evaluate_model':
-                style = {'width': '100%', 'display': 'block'}
+                val = log
+                style_text = {'width': '100%', 'display': 'block'}
             if data_table[row[0]]['job_type'] == 'prediction_model':
                 start = log.find('filename')
                 if start > -1 and len(log) > start + 10:
                     fig = get_class_prob(log, start, list_test_filename[slider_value])
-                    style = {'width': '100%', 'display': 'block'}
-    return data_table, fig, style
+                    style_fig = {'width': '100%', 'display': 'block'}
+    return data_table, fig, style_fig, val, style_text, is_open, log_display
 
 
 @app.callback(
