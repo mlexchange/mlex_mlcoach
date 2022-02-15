@@ -217,14 +217,14 @@ CONTENT = [
                                              ],
                                    style={'height': '30rem'})
                       ]),
-            width=6),
+            width=5),
         dbc.Col(dbc.Card(
             id = 'results',
             children=[dbc.CardHeader('Results'),
                       dbc.CardBody(children = [dcc.Graph(id='results-plot',
                                                         style={'display': 'none'})],
                                    style={'height': '30rem'})]),
-            width=6)]),
+            width=7)]),
         dcc.Interval(id='interval', interval=5 * 1000, n_intervals=0)
     ]),
     JOB_STATUS

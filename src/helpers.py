@@ -69,7 +69,11 @@ def get_class_prob(log, start, filename):
     df = pd.read_csv(StringIO(log.replace('\n\n', '\n')), sep=' ')
     try:
         res = df.loc[df['filename'] == filename]    # search results for the selected file
-        fig = px.bar(res.iloc[: , 1:], x='class', y='probability')
+        fig = px.bar(res.iloc[: , 1:])
+        fig.update_layout(yaxis_title="probability")
+        fig.update_xaxes(showgrid=False,
+                         showticklabels=False,
+                         zeroline=False)
         return fig #res.to_string(index=False)
     except Exception as err:
         return go.Figure(go.Scatter(x=[], y=[]))
