@@ -165,7 +165,8 @@ JOB_STATUS = dbc.Card(
             dbc.ModalBody(id='log-display'),
             dbc.ModalFooter(dbc.Button("Close", id="modal-close", className="ml-auto")),
             ],
-            id="log-modal")
+            id='log-modal',
+            size='xl')
     ]
     )
 
@@ -261,6 +262,7 @@ app.layout = html.Div([templates.header(),
     Output('results-text', 'style'),
     Output('log-modal', 'is_open'),
     Output('log-display', 'children'),
+    Output('jobs-table', 'active_cell'),
     Input('interval', 'n_intervals'),
     Input('jobs-table', 'selected_rows'),
     Input('jobs-table', 'active_cell'),
@@ -282,8 +284,8 @@ def update_table(n, row, active_cell, slider_value, close_clicks):
         results:        Testing results (probability)
     '''
     changed_id = [p['prop_id'] for p in dash.callback_context.triggered][0]
-    if 'close-error' in changed_id:
-        return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, False, dash.no_update
+    if 'modal-close.n_clicks' in changed_id:
+        return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, False, dash.no_update, None
     job_list = get_job(USER, 'mlcoach')
     data_table = []
     if job_list is not None:
@@ -296,11 +298,11 @@ def update_table(n, row, active_cell, slider_value, close_clicks):
                                   experiment_id=job['container_kwargs']['experiment_id'],
                                   job_logs=job['container_logs'])
                               )
-    is_open = False
-    log_display = []
+    is_open = dash.no_update
+    log_display = dash.no_update
     if active_cell:
         row_log = active_cell["row"]
-        col_log = active_cell["column"]
+        col_log = active_cell["column_id"]
         if col_log == 'job_logs':
             is_open = True
             log_display = data_table[row_log]["job_logs"]
@@ -324,7 +326,7 @@ def update_table(n, row, active_cell, slider_value, close_clicks):
                 if start > -1 and len(log) > start + 10:
                     fig = get_class_prob(log, start, list_test_filename[slider_value])
                     style_fig = {'width': '100%', 'display': 'block'}
-    return data_table, fig, style_fig, val, style_text, is_open, log_display
+    return data_table, fig, style_fig, val, style_text, is_open, log_display, None
 
 
 @app.callback(
