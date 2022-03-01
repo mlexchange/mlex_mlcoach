@@ -7,6 +7,7 @@ if sys.version_info[0] < 3:
 else:
     from io import StringIO
 
+import dash_html_components as html
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -123,3 +124,11 @@ def model_list_GET_call():
     response = urllib.request.urlopen(url)
     data = json.loads(response.read())
     return data
+
+
+def arrange_text(text):
+    new_text = text.splitlines()
+    modal_text = []
+    for phrase in new_text:
+        modal_text.append(phrase)
+        modal_text.append(html.Br())
