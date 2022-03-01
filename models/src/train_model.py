@@ -43,12 +43,12 @@ if __name__ == '__main__':
     learning_rate = train_parameters.learning_rate
     loss_func = train_parameters.loss_function.value
 
-    opt = compile("tf.keras.optimizers." + optimizer + "(learning_rate=" + str(learning_rate) + ")", "<string>", "eval")
-    code = compile("tf.keras.applications." + nn_model +
-                   "(include_top=True, weights=None, input_tensor=None," + "pooling=" + pooling +
-                   ", classes= class_num)", "<string>", "eval")
-    model = eval(code)
-    model.compile(optimizer=opt,        # before adam
+    opt_code = compile("tf.keras.optimizers." + optimizer + "(learning_rate=" + str(learning_rate) + ")", "<string>", "eval")
+    model_code = compile("tf.keras.applications." + nn_model +
+                         "(include_top=True, weights=None, input_tensor=None," + "pooling=" + pooling +
+                         ", classes= class_num)", "<string>", "eval")
+    model = eval(model_code)
+    model.compile(optimizer=eval(opt_code),        # before adam
                   loss=loss_func,       # before categorical_crossentropy
                   metrics=['accuracy'])
     model.summary()

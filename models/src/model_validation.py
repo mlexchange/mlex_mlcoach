@@ -26,14 +26,14 @@ class NNModel(str, Enum):
 
 
 class Optimizer(str, Enum):
-    adadelta = "adadelta"
-    adagrad = "adagrad"
-    adam = "adam"
-    adamax = "adamax"
-    ftrl = "ftrl"
-    nadam = "nadam"
-    rmsprop = "rmsprop"
-    sgd = "sgd"
+    Adadelta = "Adadelta"
+    Adagrad = "Adagrad"
+    Adam = "Adam"
+    Adamax = "Adamax"
+    Ftrl = "Ftrl"
+    Nadam = "Nadam"
+    RMSprop = "RMSprop"
+    SGD = "SGD"
 
 
 class LossFunction(str, Enum):
