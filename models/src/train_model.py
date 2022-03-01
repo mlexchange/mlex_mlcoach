@@ -39,9 +39,9 @@ if __name__ == '__main__':
     pooling = train_parameters.pooling
     epochs = train_parameters.epochs
     nn_model = train_parameters.nn_model
-    optimizer = train_parameters.optimizer
+    optimizer = train_parameters.optimizer.value
     learning_rate = train_parameters.learning_rate
-    loss_func = train_parameters.loss_function
+    loss_func = train_parameters.loss_function.value
 
     opt = compile("tf.keras.optimizers." + optimizer + "(learning_rate=" + str(learning_rate) + ")", "<string>", "eval")
     code = compile("tf.keras.applications." + nn_model +
