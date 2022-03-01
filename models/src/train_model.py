@@ -39,13 +39,18 @@ if __name__ == '__main__':
     pooling = train_parameters.pooling
     epochs = train_parameters.epochs
     nn_model = train_parameters.nn_model
+    optimizer = train_parameters.optimizer
+    learning_rate = train_parameters.learning_rate
+    loss_func = train_parameters.loss_function
+
+    opt = compile("tf.keras.optimizers." + optimizer + "(learning_rate=" + learning_rate + ")", "<string>", "eval")
 
     code = compile("tf.keras.applications." + nn_model +
                    "(include_top=True, weights=None, input_tensor=None," + "pooling=" + pooling +
                    ", classes= class_num)", "<string>", "eval")
     model = eval(code)
-    model.compile(optimizer='adam',
-                  loss='categorical_crossentropy',
+    model.compile(optimizer=opt,        # before adam
+                  loss=loss_func,       # before categorical_crossentropy
                   metrics=['accuracy'])
     model.summary()
     tf.keras.utils.plot_model(model, out_dir+'/model_layout.png', show_shapes=True)     # plot NN
