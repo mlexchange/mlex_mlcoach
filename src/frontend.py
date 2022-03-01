@@ -352,7 +352,7 @@ def load_parameters_and_content(model_selection, action_selection, row, data_tab
     '''
     data = model_list_GET_call()
     if model_selection == 'tf-NN' and action_selection == 'train_model':
-        conditions = {'model_name': 'Tensorflow-NN'}
+        conditions = {'model_name': 'TF-NeuralNetworks'}
         model = [d for d in data if all((k in d and d[k] == v) for k, v in conditions.items())]
         parameters = JSONParameterEditor(
             _id={'type': 'parameter_editor'},       # pattern match _id (base id), name
