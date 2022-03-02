@@ -131,6 +131,7 @@ JOB_STATUS = dbc.Card(
                             {'name': 'Job ID', 'id': 'job_id'},
                             {'name': 'Type', 'id': 'job_type'},
                             {'name': 'Status', 'id': 'status'},
+                            {'name': 'Parameters', 'id': 'parameters'},
                             {'name': 'Experiment ID', 'id': 'experiment_id'},
                             {'name': 'Logs', 'id': 'job_logs'}
                         ],
@@ -287,6 +288,7 @@ def update_table(n, row, active_cell, slider_value, close_clicks):
                                   job_id=job['uid'],
                                   job_type=job['job_type'],
                                   status=job['status'],
+                                  parameters=str(job['container_kwargs']['parameters']),
                                   experiment_id=job['container_kwargs']['experiment_id'],
                                   job_logs=job['container_logs'])
                               )
@@ -295,10 +297,14 @@ def update_table(n, row, active_cell, slider_value, close_clicks):
     if active_cell:
         row_log = active_cell["row"]
         col_log = active_cell["column_id"]
-        if col_log == 'job_logs':
+        if col_log == 'job_logs':       # show job logs
             is_open = True
             log_display = dcc.Textarea(value=data_table[row_log]["job_logs"],
                                        style={'width': '100%', 'height': '30rem', 'font-family':'monospace'})
+        if col_log == 'parameters':     # show job parameters
+            is_open = True
+            log_display = dcc.Textarea(value=str(job['container_kwargs']['parameters']),
+                                       style={'width': '100%', 'height': '30rem', 'font-family': 'monospace'})
     style_fig = {'display': 'none'}
     style_text = {'display': 'none'}
     val = ''
@@ -448,13 +454,6 @@ def execute(clicks, children, action_selection, job_data, row):
                     key = child["props"]["children"][1]["props"]["id"]["param_key"]
                     value = child["props"]["children"][1]["props"]["value"]
                     input_params[key] = value
-                # for count, child in enumerate(children['props']['children']):
-                #     print(child)
-                #     if count%2 == 1:
-                #         key = child["props"]["id"]
-                #         value = child["props"]["value"]
-                #         input_params[key] = value
-                # print(input_params)
             except Exception:
                 for child in children:
                     key = child["props"]["children"][1]["props"]["id"]
