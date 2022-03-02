@@ -372,7 +372,7 @@ def load_parameters_and_content(model_selection, action_selection, row, data_tab
         parameters = DATA_AUG_WIDGET.copy()
         init_layer = dbc.FormGroup([
             dbc.Label('Choose a trained model from the job list and select a layer to start training at below'),
-            dcc.Slider(id='init-layer',
+            dcc.Slider(id='init_layer',
                        min=0,
                        max=num_layers,
                        disabled=disable_comp,
@@ -381,7 +381,7 @@ def load_parameters_and_content(model_selection, action_selection, row, data_tab
                        tooltip={'always_visible': True,
                                 'placement': 'bottom'})
         ])
-        parameters = parameters + EXTRA_PARAMETERS.append(init_layer)
+        parameters = parameters + EXTRA_PARAMETERS + [init_layer]
     contents = DATA_PREPROCESS_WIDGET.copy()
     return parameters, html.Div(contents)
 
