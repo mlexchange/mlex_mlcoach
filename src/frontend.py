@@ -74,19 +74,11 @@ DATA_PREPROCESS_WIDGET = [dcc.Graph(id='img-output',
 # Extra parameters for transfer learning
 EXTRA_PARAMETERS = [
             dbc.FormGroup([
-                dbc.Label('Pooling Options'),
-                dbc.RadioItems(
-                    options=[{'label': 'None', 'value': 'None'},
-                             {'label': 'Maximum', 'value': 'Maximum'},
-                             {'label': 'Average', 'value': 'Average'}],
-                    value='None'
-                )
-            ]),
-            dbc.FormGroup([
                 dbc.Label('Number of epochs'),
                 dcc.Slider(id='epochs',
                            min=1,
                            max=1000,
+                           value=3,
                            tooltip={'always_visible': True,
                                     'placement': 'bottom'})
             ])]
@@ -389,7 +381,7 @@ def load_parameters_and_content(model_selection, action_selection, row, data_tab
                        tooltip={'always_visible': True,
                                 'placement': 'bottom'})
         ])
-        parameters = parameters + EXTRA_PARAMETERS + [init_layer]
+        parameters = parameters + EXTRA_PARAMETERS.append(init_layer)
     contents = DATA_PREPROCESS_WIDGET.copy()
     return parameters, html.Div(contents)
 
