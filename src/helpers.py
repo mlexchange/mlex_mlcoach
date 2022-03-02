@@ -124,11 +124,3 @@ def model_list_GET_call():
     response = urllib.request.urlopen(url)
     data = json.loads(response.read())
     return data
-
-
-def arrange_text(text):
-    new_text = text.splitlines()
-    modal_text = []
-    for phrase in new_text:
-        modal_text.append(phrase)
-        modal_text.append(html.Br())

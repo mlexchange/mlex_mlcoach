@@ -15,7 +15,7 @@ import plotly.graph_objects as go
 import uuid
 
 from helpers import SimpleJob
-from helpers import get_job, generate_figure, get_class_prob, model_list_GET_call, plot_figure, arrange_text
+from helpers import get_job, generate_figure, get_class_prob, model_list_GET_call, plot_figure
 from kwarg_editor import JSONParameterEditor
 import templates
 
@@ -305,7 +305,8 @@ def update_table(n, row, active_cell, slider_value, close_clicks):
         col_log = active_cell["column_id"]
         if col_log == 'job_logs':
             is_open = True
-            log_display = arrange_test(data_table[row_log]["job_logs"])
+            log_display = dcc.Textarea(value=data_table[row_log]["job_logs"],
+                                       style={'width': '100%', 'height': '30rem', 'font-family':'monospace'})
     style_fig = {'display': 'none'}
     style_text = {'display': 'none'}
     val = ''
