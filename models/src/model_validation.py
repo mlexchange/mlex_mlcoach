@@ -77,6 +77,7 @@ class TrainingParams(DataAugmentationParams):
     nn_model: NNModel
 
 
-class TransferLearningParams(TrainingParams):
+class TransferLearningParams(DataAugmentationParams):
+    epochs: int = Field(description='number of epochs')
     init_layer: int = Field(description='initial layer')
     nn_model: Optional[NNModel]

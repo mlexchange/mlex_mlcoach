@@ -38,7 +38,6 @@ if __name__ == '__main__':
     else:
         valid_generator = []
 
-    pooling = transfer_parameters.pooling
     epochs = transfer_parameters.epochs
     start_layer = transfer_parameters.init_layer
 
@@ -47,9 +46,9 @@ if __name__ == '__main__':
     for layers in model.layers[:start_layer]:
         layers.trainable = False
 
-    model.compile(optimizer='adam',
-                  loss='categorical_crossentropy',
-                  metrics=['accuracy'])
+    # model.compile(optimizer='adam',
+    #               loss='categorical_crossentropy',
+    #               metrics=['accuracy'])
     model.summary()
 
     # fit model while also keeping track of data for dash plots.
