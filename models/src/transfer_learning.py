@@ -46,9 +46,6 @@ if __name__ == '__main__':
     for layers in model.layers[:start_layer]:
         layers.trainable = False
 
-    # model.compile(optimizer='adam',
-    #               loss='categorical_crossentropy',
-    #               metrics=['accuracy'])
     model.summary()
 
     # fit model while also keeping track of data for dash plots.
