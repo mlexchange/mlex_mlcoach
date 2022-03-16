@@ -11,6 +11,7 @@ import dash_html_components as html
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import requests
 
 
@@ -87,10 +88,16 @@ def generate_figure(log, start):
         end = len(log)
     log = log[start:end]
     df = pd.read_csv(StringIO(log.replace('\n\n', '\n')), sep=' ')
-    df.set_index('epoch', inplace=True)
     try:
-        fig = px.line(df, markers=True)
-        fig.update_layout(xaxis_title="epoch", yaxis_title="loss", margin=dict(l=20, r=20, t=20, b=20))
+        fig = make_subplots(specs=[[{"secondary_y": True}]])
+        for col in list(df.columns)[1:]:
+            if 'loss' in col:
+                fig.add_trace(go.Scatter(x=df['epoch'], y=df[col], name=col), secondary_y=False)
+                fig.update_yaxes(title_text="loss", secondary_y=False)
+        else:
+            fig.add_trace(go.Scatter(x=df['epoch'], y=df[col], name=col), secondary_y=True)
+            fig.update_yaxes(title_text="accuracy", secondary_y=True)
+        fig.update_layout(xaxis_title="epoch", margin=dict(l=20, r=20, t=20, b=20))
         return fig
     except Exception as e:
         print(e)

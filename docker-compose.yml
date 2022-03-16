@@ -10,12 +10,12 @@ services:
       dockerfile: "docker/Dockerfile"
     command: "python src/frontend.py"
     environment:
-      DATA_DIR: /Users/tanchavez/Documents/Dataset/born
+      DATA_DIR: /data/tanchavez/Datasets/born  # change this for your data path
     volumes:
       - ${PWD}:/app/work
-      - /Users/tanchavez/Documents/Dataset/born:/app/work/data
+      - /data/tanchavez/Datasets/born:/app/work/data  # change this for your data path
     ports:
-      - "8050:8050"
+      - "8052:8052"
     networks:
       - computing_api_default
       - model-regist_default

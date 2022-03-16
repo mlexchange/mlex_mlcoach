@@ -138,7 +138,11 @@ JOB_STATUS = dbc.Card(
                         data=[],
                         hidden_columns=['job_id', 'experiment_id'],
                         row_selectable='single',
-                        style_cell={'padding': '1rem', 'textAlign': 'left'},
+                        style_cell={'padding': '1rem',
+                                    'textAlign': 'left',
+                                    'overflow': 'hidden',
+                                    'textOverflow': 'ellipsis',
+                                    'maxWidth': 0},
                         fixed_rows={'headers': True},
                         css=[{"selector": ".show-hide", "rule": "display: none"}],
                         style_data_conditional=[
@@ -149,7 +153,7 @@ JOB_STATUS = dbc.Card(
                              'backgroundColor': 'red',
                              'color': 'white'}
                         ],
-                        style_table={'height': '18rem', 'overflowY': 'auto', 'overflowX': 'scroll'}
+                        style_table={'height': '30rem', 'overflowY': 'auto', 'overflowX': 'scroll'}
                     )
                 ],
             ),
