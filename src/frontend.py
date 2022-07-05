@@ -459,7 +459,7 @@ def execute(execute, submit, children, num_cpus, num_gpus, action_selection, job
             directories = [TRAIN_DIR, VAL_DIR, str(in_path) + '/model.h5', str(out_path)]
         job = SimpleJob(service_type='backend',
                         working_directory='{}'.format(DATA_DIR),
-                        uri='mlexchange/unsupervised-classifier',
+                        uri='mlexchange/labelmaker-functions',
                         cmd=' '.join([command] + directories + ['\'' + json.dumps(input_params) + '\'']),
                         kwargs={'job_type': action_selection,
                                 'experiment_id': experiment_id,
