@@ -1,5 +1,6 @@
 import pathlib
 import dash
+import json
 import os
 
 import config as cfg
@@ -15,7 +16,7 @@ import plotly.graph_objects as go
 import uuid
 
 from helpers import SimpleJob
-from helpers import get_job, generate_figure, get_class_prob, model_list_GET_call, plot_figure
+from helpers import get_job, generate_figure, get_class_prob, model_list_GET_call, plot_figure, get_gui_components
 from kwarg_editor import JSONParameterEditor
 import templates
 
@@ -35,6 +36,7 @@ USER = 'admin'
 CLASSES = [subdir for subdir in sorted(os.listdir(TEST_DIR)) if
            os.path.isdir(os.path.join(TEST_DIR, subdir))]
 CLASS_NUM = len(CLASSES)
+MODELS = model_list_GET_call()
 
 # Get training filenames
 path, train_folders, extra_files = next(os.walk(TRAIN_DIR))
@@ -192,9 +194,8 @@ SIDEBAR = [
                     dbc.Label('Model'),
                     dcc.Dropdown(
                         id='model-selection',
-                        options=[
-                            {'label': 'Tensorflow Neural Networks', 'value': 'tf-NN'}],
-                        value='tf-NN')
+                        options=MODELS,
+                        value=MODELS[0]['value'])
                 ])
             ])
         ]
@@ -287,14 +288,17 @@ def update_table(n, row, active_cell, slider_value, close_clicks):
     data_table = []
     if job_list is not None:
         for job in job_list:
+            params = str(job['job_kwargs']['kwargs']['params'])
+            if job['job_kwargs']['kwargs']['job_type'] != 'train_model':
+                params = params + '\nTraining Parameters: ' + str(job['job_kwargs']['kwargs']['train_params'])
             data_table.insert(0,
                               dict(
                                   job_id=job['uid'],
-                                  job_type=job['job_type'],
-                                  status=job['status'],
-                                  parameters=str(job['container_kwargs']['parameters']),
-                                  experiment_id=job['container_kwargs']['experiment_id'],
-                                  job_logs=job['container_logs'])
+                                  job_type=job['job_kwargs']['kwargs']['job_type'],
+                                  status=job['status']['state'],
+                                  parameters=params,
+                                  experiment_id=job['job_kwargs']['kwargs']['experiment_id'],
+                                  job_logs=job['logs'])
                               )
     is_open = dash.no_update
     log_display = dash.no_update
@@ -307,7 +311,7 @@ def update_table(n, row, active_cell, slider_value, close_clicks):
                                        style={'width': '100%', 'height': '30rem', 'font-family':'monospace'})
         if col_log == 'parameters':     # show job parameters
             is_open = True
-            log_display = dcc.Textarea(value=str(job['container_kwargs']['parameters']),
+            log_display = dcc.Textarea(value=str(job['job_kwargs']['kwargs']['params']),
                                        style={'width': '100%', 'height': '30rem', 'font-family': 'monospace'})
     style_fig = {'display': 'none'}
     style_text = {'display': 'none'}
@@ -353,47 +357,13 @@ def load_parameters_and_content(model_selection, action_selection, row, data_tab
         app-parameters:     Parameters according to the selected model & action
         app-content:        Contents (right hand side) according to the selected model & action
     '''
-    data = model_list_GET_call()
-    if model_selection == 'tf-NN' and action_selection == 'train_model':
-        conditions = {'model_name': 'TF-NeuralNetworks'}
-        model = [d for d in data if all((k in d and d[k] == v) for k, v in conditions.items())]
-        parameters = JSONParameterEditor(
-            _id={'type': 'parameter_editor'},       # pattern match _id (base id), name
-            json_blob=model[0]["gui_parameters"]
-        )
-        parameters.init_callbacks(app)
-    if action_selection == 'evaluate_model':
-        parameters = DATA_AUG_WIDGET.copy()
-    if action_selection == 'prediction_model':
-        parameters = DATA_AUG_WIDGET.copy()
-    if action_selection == 'transfer_learning':
-        num_layers = 0
-        disable_comp = True
-        try:
-            if data_table[row[0]]['job_type'] == 'train_model':
-                try:
-                    logs = data_table[row[0]]['job_logs']
-                    num_layers = int(logs[logs.find('Length: ')+8:logs.find(' layers')])
-                    disable_comp = False
-                except Exception as e:
-                    print(e)
-        except Exception as e:
-            print(e)
-        parameters = DATA_AUG_WIDGET.copy()
-        init_layer = dbc.FormGroup([
-            dbc.Label('Choose a trained model from the job list and select a layer to start training at below'),
-            dcc.Slider(id='init_layer',
-                       min=0,
-                       max=num_layers,
-                       disabled=disable_comp,
-                       step=1,
-                       value=0,
-                       tooltip={'always_visible': True,
-                                'placement': 'bottom'})
-        ])
-        parameters = parameters + EXTRA_PARAMETERS + [init_layer]
+    parameters = get_gui_components(model_selection, action_selection)
+    gui_item = JSONParameterEditor(_id={'type': 'parameter_editor'},  # pattern match _id (base id), name
+                                   json_blob=parameters,
+                                   )
+    gui_item.init_callbacks(app)
     contents = DATA_PREPROCESS_WIDGET.copy()
-    return parameters, html.Div(contents)
+    return gui_item, html.Div(contents)
 
 
 @app.callback(
@@ -452,6 +422,7 @@ def execute(clicks, children, action_selection, job_data, row):
         out_path = pathlib.Path('data/mlexchange_store/{}/{}'.format(USER, experiment_id))
         out_path.mkdir(parents=True, exist_ok=True)
         input_params = {}
+        kwargs = {}
         if bool(children):
             try:
                 for child in children['props']['children']:
@@ -463,7 +434,6 @@ def execute(clicks, children, action_selection, job_data, row):
                     key = child["props"]["children"][1]["props"]["id"]
                     value = child["props"]["children"][1]["props"]["value"]
                     input_params[key] = value
-        json_dict = input_params
         if action_selection == 'train_model':
             command = "python3 src/train_model.py"
             directories = [TRAIN_DIR, VAL_DIR, str(out_path)]
@@ -475,48 +445,47 @@ def execute(clicks, children, action_selection, job_data, row):
             directories = [TEST_DIR, str(in_path) + '/model.h5']
         if action_selection == 'prediction_model':
             command = "python3 src/predict_model.py"
+            kwargs = {'train_params': job_data[row[0]]['parameters']}
             directories = [TEST_DIR, str(in_path) + '/model.h5', str(out_path)]
         if action_selection == 'transfer_learning':
             command = "python3 src/transfer_learning.py"
             directories = [TRAIN_DIR, VAL_DIR, str(in_path) + '/model.h5', str(out_path)]
-        job = SimpleJob(user=USER,
-                        job_type=action_selection,
-                        description='',
-                        deploy_location='local',
-                        gpu=True,
-                        data_uri='{}'.format(DATA_DIR),
-                        container_uri='mlexchange/labelmaker-functions',
-                        container_cmd=command,
-                        container_kwargs={'parameters': json_dict,
-                                          'directories': directories,
-                                          'experiment_id': experiment_id}
-                        )
-        job.launch_job()
+        num_cpus = 2
+        num_gpus = 0
+        job = SimpleJob(service_type='backend',
+                        working_directory='{}'.format(DATA_DIR),
+                        uri='mlexchange/unsupervised-classifier',
+                        cmd=' '.join([command] + directories + ['\'' + json.dumps(input_params) + '\'']),
+                        kwargs={'job_type': action_selection,
+                                'experiment_id': experiment_id,
+                                'params': input_params,
+                                **kwargs})
+        job.submit(USER, num_cpus, num_gpus)
         return contents
     return []
 
 
-@app.callback(
-    Output('training_loss', 'figure'),
-    Input('interval', 'n_intervals'),
-    prevent_initial_call=True
-)
-def plot_loss(n):
-    '''
-    This callback plots the loss function
-    Args:
-        n:              Time interval that triggers this callback
-    Returns:
-        training_loss:  Loss plot
-    '''
-    job = get_job(USER, 'mlcoach')
-    job = job[0]
-    logs = job['container_logs']
-    if logs:
-        df = pd.read_csv(StringIO(logs), sep=' ')
-        fig = px.line(df, x="epoch", y="loss")
-        fig.update_traces(mode='markers+lines')
-        return fig
+# @app.callback(
+#     Output('training_loss', 'figure'),
+#     Input('interval', 'n_intervals'),
+#     prevent_initial_call=True
+# )
+# def plot_loss(n):
+#     '''
+#     This callback plots the loss function
+#     Args:
+#         n:              Time interval that triggers this callback
+#     Returns:
+#         training_loss:  Loss plot
+#     '''
+#     job = get_job(USER, 'mlcoach')
+#     job = job[0]
+#     logs = job['container_logs']
+#     if logs:
+#         df = pd.read_csv(logs, sep=' ')
+#         fig = px.line(df, x="epoch", y="loss")
+#         fig.update_traces(mode='markers+lines')
+#         return fig
 
 
 if __name__ == '__main__':

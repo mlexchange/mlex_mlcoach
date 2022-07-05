@@ -17,34 +17,40 @@ import requests
 
 class SimpleJob:
     def __init__(self,
-                 user,
-                 job_type,
-                 description,
-                 deploy_location,
-                 gpu,
-                 data_uri,
-                 container_uri,
-                 container_cmd,
-                 container_kwargs,
-                 mlex_app = 'mlcoach'):
-        self.user = user
+                 service_type,
+                 working_directory,
+                 uri,
+                 cmd,
+                 kwargs=None,
+                 mlex_app='mlcoach'):
         self.mlex_app = mlex_app
-        self.job_type = job_type
-        self.description = description
-        self.deploy_location = deploy_location
-        self.gpu = gpu
-        self.data_uri = data_uri
-        self.container_uri = container_uri
-        self.container_cmd = container_cmd
-        self.container_kwargs = container_kwargs
+        self.service_type = service_type
+        self.working_directory = working_directory
+        self.job_kwargs = {'uri': uri,
+                           'type': 'docker',
+                           'cmd': cmd,
+                           'kwargs': kwargs}
 
-    def launch_job(self):
-        """
-        Send job to computing service
-        :return:
-        """
-        url = 'http://job-service:8080/api/v0/jobs'
-        return requests.post(url, json=self.__dict__).status_code
+    def submit(self, user, num_cpus, num_gpus):
+        '''
+        Sends job to computing service
+        Args:
+            user:       user UID
+            num_cpus:   Number of CPUs
+            num_gpus:   Number of GPUs
+        Returns:
+            Workflow status
+        '''
+        workflow = {'user_uid': user,
+                    'job_list': [self.__dict__],
+                    'host_list': ['mlsandbox.als.lbl.gov', 'local.als.lbl.gov', 'vaughan.als.lbl.gov'],
+                    'dependencies': {'0':[]},
+                    'requirements': {'num_processors': num_cpus,
+                                     'num_gpus': num_gpus,
+                                     'num_nodes': 1}}
+        print(workflow)
+        url = 'http://job-service:8080/api/v0/workflows'
+        return requests.post(url, json=workflow).status_code
 
 
 # Queries the job from the computing database
@@ -125,9 +131,43 @@ def save_model(model, save_path='my_model.h5'):
 
 def model_list_GET_call():
     """
-    Get the whole model registry data from the fastapi url.
+    Get a list of algorithms from content registry
     """
-    url = 'http://model-api:8000/api/v0/model-list'  # current host, could be inside the docker
+    url = 'http://content-api:8000/api/v0/models'
     response = urllib.request.urlopen(url)
-    data = json.loads(response.read())
-    return data
+    list = json.loads(response.read())
+    models = []
+    for item in list:
+        if 'mlcoach' in item['application']:
+            models.append({'label': item['name'], 'value': item['content_id']})
+    return models
+
+
+def get_model(model_uid):
+    '''
+    This function gets the algorithm dict from content registry
+    Args:
+         model_uid:     Model UID
+    Returns:
+        service_type:   Backend/Frontend
+        content_uri:    URI
+    '''
+    url = 'http://content-api:8000/api/v0/contents/{}/content'.format(model_uid)
+    content = requests.get(url).json()
+    if 'map' in content:
+        return content['service_type'], content['uri']
+    return content['service_type'], content['uri']
+
+
+def get_gui_components(model_uid, comp_group):
+    '''
+    Returns the GUI components of the corresponding model and action
+    Args:
+        model_uid:  Model UID
+        comp_group: Action, e.g. training, testing, etc
+    Returns:
+        params:     List of model parameters
+    '''
+    url = f'http://content-api:8000/api/v0/models/{model_uid}/model/{comp_group}/gui_params'
+    response = urllib.request.urlopen(url)
+    return json.loads(response.read())
