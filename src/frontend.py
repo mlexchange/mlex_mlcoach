@@ -2,6 +2,7 @@ import pathlib
 import dash
 import json
 import os
+import shutil
 
 import config as cfg
 from dash.dependencies import Input, Output, State, MATCH, ALL
@@ -73,53 +74,38 @@ DATA_PREPROCESS_WIDGET = [dcc.Graph(id='img-output',
                                               'placement': 'bottom'}),
                           ]
 
-# Extra parameters for transfer learning
-EXTRA_PARAMETERS = [
-            dbc.FormGroup([
-                dbc.Label('Number of epochs'),
-                dcc.Slider(id='epochs',
-                           min=1,
-                           max=1000,
-                           value=3,
-                           tooltip={'always_visible': True,
-                                    'placement': 'bottom'})
-            ])]
 
-# Data augmentation widget
-DATA_AUG_WIDGET = [
-    dbc.FormGroup([
-        dbc.Label('Rotation Angle'),
-        dcc.Slider(id='rotation_angle',
-                   min=0,
-                   max=360,
-                   value=0,
-                   tooltip={'always_visible': True,
-                            'placement': 'bottom'})
-    ]),
-    dbc.FormGroup([
-        dbc.Label('Image Flip'),
-        dbc.RadioItems(
-            id='image_flip',
-            options=[
-               {'label': 'None', 'value': 'None'},
-               {'label': 'Vertical', 'value': 'vert'},
-               {'label': 'Horizontal', 'value': 'Horizontal'},
-               {'label': 'Both', 'value': 'Both'}
+RESOURCES_SETUP = html.Div(
+    [
+        dbc.Modal(
+            [
+                dbc.ModalHeader("Resources Setup"),
+                dbc.ModalBody(
+                    children=[
+                        dbc.FormGroup([
+                                dbc.Label('Number of CPUs'),
+                                dbc.Input(id='num-cpus',
+                                          type="int",
+                                          value=1)]),
+                        dbc.FormGroup([
+                                dbc.Label('Number of GPUs'),
+                                dbc.Input(id='num-gpus',
+                                          type="int",
+                                          value=0)])
+                    ]),
+                dbc.ModalFooter(
+                    dbc.Button(
+                        "Submit Job", id="submit", className="ms-auto", n_clicks=0
+                    )
+                ),
             ],
-            value = 'None'
-        )
-    ]),
-    dbc.FormGroup([
-        dbc.Label('Batch Size'),
-        dcc.Slider(id='batch_size',
-                  min=16,
-                  max=128,
-                  value=32,
-                  step=16,
-                  tooltip={'always_visible': True,
-                           'placement': 'bottom'})
-    ])
-]
+            id="resources-setup",
+            centered=True,
+            is_open=False,
+        ),
+    ]
+)
+
 
 # Job Status Display
 JOB_STATUS = dbc.Card(
@@ -230,7 +216,13 @@ CONTENT = [
                                                         style={'display': 'none'}),
                                                dcc.Textarea(id='results-text',
                                                             style={'display': 'none'},
-                                                            className='mb-2')
+                                                            className='mb-2'),
+                                               dbc.Button('Download Results',
+                                                          id='download-button',
+                                                          n_clicks=0,
+                                                          className='m-1',
+                                                          style={'display': 'None'}),
+                                               dcc.Download(id='download-out')
                                                ],
                                    style={'height': '30rem'})]),
             width=7)]),
@@ -240,14 +232,17 @@ CONTENT = [
 ]
 
 # Setting up initial webpage layout
+app.title = 'MLCoach'
+app._favicon = 'mlex.ico'
 app.layout = html.Div([templates.header(),
-                       dbc.Container(
+                       dbc.Container([
                            dbc.Row([dbc.Col(SIDEBAR, width=3),
                                     dbc.Col(CONTENT,
                                             width=9,
                                             style={'align-items': 'center', 'justify-content': 'center'}),
                                     html.Div(id='dummy-output')
                                    ]),
+                           RESOURCES_SETUP],
                            fluid=True
                        )])
 
@@ -339,6 +334,7 @@ def update_table(n, row, active_cell, slider_value, close_clicks):
 @app.callback(
     Output('app-parameters', 'children'),
     Output('app-content', 'children'),
+    Output('download-button', 'style'),
     Input('model-selection', 'value'),
     Input('action', 'value'),
     Input('jobs-table', 'selected_rows'),
@@ -363,7 +359,10 @@ def load_parameters_and_content(model_selection, action_selection, row, data_tab
                                    )
     gui_item.init_callbacks(app)
     contents = DATA_PREPROCESS_WIDGET.copy()
-    return gui_item, html.Div(contents)
+    style = dash.no_update
+    if row is not None:
+        style = {'width': '100%', 'justify-content': 'center'}
+    return gui_item, html.Div(contents), style
 
 
 @app.callback(
@@ -397,27 +396,35 @@ def refresh_image(img_ind, action_selection):
 
 
 @app.callback(
-    Output('dummy-output', 'children'),
+    Output('resources-setup', 'is_open'),
     Input('execute', 'n_clicks'),
+    Input('submit', 'n_clicks'),
     [State('app-parameters', 'children'),
+     State('num-cpus', 'value'),
+     State('num-gpus', 'value'),
      State('action', 'value'),
      State('jobs-table', 'data'),
      State('jobs-table', 'selected_rows')],
     prevent_intial_call=True)
-def execute(clicks, children, action_selection, job_data, row):
+def execute(execute, submit, children, num_cpus, num_gpus, action_selection, job_data, row):
     '''
     This callback submits a job request to the compute service according to the selected action & model
     Args:
-        clicks:             Execute button triggers this callback
+        execute:            Execute button
+        submit:             Submit button
         children:           Model parameters
+        num_cpus:           Number of CPUs assigned to job
+        num_gpus:           Number of GPUs assigned to job
         action_selection:   Action selected
         job_data:           Lists of jobs
         row:                Selected row (job)
     Returns:
         None
     '''
-    if clicks > 0:
-        contents = []
+    changed_id = [p['prop_id'] for p in dash.callback_context.triggered][0]
+    if 'execute.n_clicks' in changed_id:
+        return True
+    if 'submit.n_clicks' in changed_id:
         experiment_id = str(uuid.uuid4())
         out_path = pathlib.Path('data/mlexchange_store/{}/{}'.format(USER, experiment_id))
         out_path.mkdir(parents=True, exist_ok=True)
@@ -450,8 +457,6 @@ def execute(clicks, children, action_selection, job_data, row):
         if action_selection == 'transfer_learning':
             command = "python3 src/transfer_learning.py"
             directories = [TRAIN_DIR, VAL_DIR, str(in_path) + '/model.h5', str(out_path)]
-        num_cpus = 2
-        num_gpus = 0
         job = SimpleJob(service_type='backend',
                         working_directory='{}'.format(DATA_DIR),
                         uri='mlexchange/unsupervised-classifier',
@@ -461,31 +466,33 @@ def execute(clicks, children, action_selection, job_data, row):
                                 'params': input_params,
                                 **kwargs})
         job.submit(USER, num_cpus, num_gpus)
-        return contents
-    return []
+        return False
+    return False
 
 
-# @app.callback(
-#     Output('training_loss', 'figure'),
-#     Input('interval', 'n_intervals'),
-#     prevent_initial_call=True
-# )
-# def plot_loss(n):
-#     '''
-#     This callback plots the loss function
-#     Args:
-#         n:              Time interval that triggers this callback
-#     Returns:
-#         training_loss:  Loss plot
-#     '''
-#     job = get_job(USER, 'mlcoach')
-#     job = job[0]
-#     logs = job['container_logs']
-#     if logs:
-#         df = pd.read_csv(logs, sep=' ')
-#         fig = px.line(df, x="epoch", y="loss")
-#         fig.update_traces(mode='markers+lines')
-#         return fig
+@app.callback(
+    Output('download-out', 'data'),
+    Input('download-button', 'n_clicks'),
+    State('jobs-table', 'data'),
+    State('jobs-table', 'selected_rows'),
+    prevent_intial_call=True)
+def execute(download, job_data, row):
+    '''
+    This callback saves the experimental results as a ZIP file
+    Args:
+        download:   Download button
+        job_data:   Table of jobs
+        row:        Selected job/row
+    Returns:
+        ZIP file with results
+    '''
+    if download and row:
+        experiment_id = job_data[row[0]]["experiment_id"]
+        experiment_path = pathlib.Path('data/mlexchange_store/{}/{}'.format(USER, experiment_id))
+        shutil.make_archive('/app/tmp/results', 'zip', experiment_path)
+        return dcc.send_file('/app/tmp/results.zip')
+    else:
+        return None
 
 
 if __name__ == '__main__':
