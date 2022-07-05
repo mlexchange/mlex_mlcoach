@@ -171,8 +171,6 @@ SIDEBAR = [
                             {'label': 'Evaluate Model on Data', 'value': 'evaluate_model'},
                             {'label': 'Test Prediction using Model', 'value': 'prediction_model'},
                             {'label': 'Transfer Learning', 'value': 'transfer_learning'},
-                            # {'label': 'View Images in Categories', 'value': 'view_images'},
-                            # {'label': 'Save and Load Models', 'value': 'save_load'}
                         ],
                         value='train_model')
                 ]),
@@ -459,7 +457,7 @@ def execute(execute, submit, children, num_cpus, num_gpus, action_selection, job
             directories = [TRAIN_DIR, VAL_DIR, str(in_path) + '/model.h5', str(out_path)]
         job = SimpleJob(service_type='backend',
                         working_directory='{}'.format(DATA_DIR),
-                        uri='mlexchange/labelmaker-functions',
+                        uri='mlexchange/tensorflow-neural-networks',
                         cmd=' '.join([command] + directories + ['\'' + json.dumps(input_params) + '\'']),
                         kwargs={'job_type': action_selection,
                                 'experiment_id': experiment_id,

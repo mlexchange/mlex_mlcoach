@@ -1,6 +1,6 @@
 TAG 			:= latest	
 USER 			:= mlexchange
-PROJECT			:= labelmaker-functions
+PROJECT			:= tensorflow-neural-networks
 
 IMG_WEB_SVC    		:= ${USER}/${PROJECT}:${TAG}
 IMG_WEB_SVC_JYP    	:= ${USER}/${PROJECT_JYP}:${TAG}
