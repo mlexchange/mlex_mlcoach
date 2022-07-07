@@ -165,3 +165,19 @@ def get_gui_components(model_uid, comp_group):
     url = f'http://content-api:8000/api/v0/models/{model_uid}/model/{comp_group}/gui_params'
     response = requests.get(url)
     return response.json()
+
+
+def init_counter(username):
+    job_list = get_job(username, 'mlcoach')
+    job_types = ['train_model', 'evaluate_model', 'prediction_model', 'transfer_learning']
+    counters = [-1, -1, -1, -1]
+    if job_list is not None:
+        for indx, job_type in enumerate(job_types):
+            for job in reversed(job_list):
+                last_job = job['job_kwargs']['kwargs']['job_type'].split()
+                value = int(last_job[-1])
+                last_job = ' '.join(last_job[0:-1])
+                if last_job == job_type:
+                    counters[indx] = value
+                    break
+    return counters

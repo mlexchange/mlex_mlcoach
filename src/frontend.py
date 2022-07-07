@@ -4,7 +4,6 @@ import pathlib
 import shutil
 import zipfile
 
-import config as cfg
 import dash
 from dash.dependencies import Input, Output, State, MATCH, ALL
 import dash_bootstrap_components as dbc
@@ -21,7 +20,8 @@ import uuid
 from file_manager import filename_list, move_a_file, move_dir, add_paths_from_dir, \
                          check_duplicate_filename, docker_to_local_path, local_to_docker_path, file_explorer
 from helpers import SimpleJob
-from helpers import get_job, generate_figure, get_class_prob, model_list_GET_call, plot_figure, get_gui_components
+from helpers import get_job, generate_figure, get_class_prob, model_list_GET_call, plot_figure, get_gui_components,\
+    init_counter
 from kwarg_editor import JSONParameterEditor
 import templates
 
@@ -173,7 +173,8 @@ SIDEBAR = [
         id="warning-modal",
         is_open=False,
     ),
-    dcc.Store(id='warning-cause', data='')
+    dcc.Store(id='warning-cause', data=''),
+    dcc.Store(id='counter', data=init_counter(USER))
 ]
 
 # App contents (right hand side)
@@ -441,8 +442,8 @@ def file_manager(browse_format, browse_n_clicks, import_n_clicks, delete_n_click
     changed_id = dash.callback_context.triggered[0]['prop_id']
     # if a previous job is selected, it's data is automatically plotted
     if 'jobs-table.selected_rows' in changed_id and job_rows is not None:
-        if job_data[job_rows[0]]["job_type"] != 'train_model':
-            return dash.no_update, job_data[job_rows[0]]["dataset"]
+        if job_data[job_rows[0]]["job_type"].split()[-1] != 'train_model':
+            return dash.no_update, job_data[job_rows[0]]["dataset"], dash.no_update
 
     supported_formats = []
     import_format = import_format.split(',')
@@ -537,7 +538,7 @@ def update_table(n, row, active_cell, slider_value, close_clicks, filenames):
     if job_list is not None:
         for job in job_list:
             params = str(job['job_kwargs']['kwargs']['params'])
-            if job['job_kwargs']['kwargs']['job_type'] != 'train_model':
+            if job['job_kwargs']['kwargs']['job_type'].split(' ')[0] != 'train_model':
                 params = params + '\nTraining Parameters: ' + str(job['job_kwargs']['kwargs']['train_params'])
             data_table.insert(0,
                               dict(
@@ -681,8 +682,11 @@ def refresh_image(import_dir, confirm_import, img_ind, filenames, img_keyword, l
 
 @app.callback(
     Output("resources-setup", "is_open"),
+    Output("counter", "data"),
+
     Input("execute", "n_clicks"),
     Input("submit", "n_clicks"),
+
     State("app-parameters", "children"),
     State("num-cpus", "value"),
     State("num-gpus", "value"),
@@ -691,8 +695,10 @@ def refresh_image(import_dir, confirm_import, img_ind, filenames, img_keyword, l
     State("jobs-table", "selected_rows"),
     State('data-path', 'data'),
     State("docker-file-paths", "data"),
+    State("counter", "data"),
     prevent_intial_call=True)
-def execute(execute, submit, children, num_cpus, num_gpus, action_selection, job_data, row, data_path, filenames):
+def execute(execute, submit, children, num_cpus, num_gpus, action_selection, job_data, row, data_path, filenames,
+            counters):
     '''
     This callback submits a job request to the compute service according to the selected action & model
     Args:
@@ -706,12 +712,13 @@ def execute(execute, submit, children, num_cpus, num_gpus, action_selection, job
         row:                Selected row (job)
         data_path:          Local path to data
         filenames:          Filenames in dataset
+        counters:           List of counters to assign a number to each job according to its action (train vs evaluate)
     Returns:
         open/close the resources setup modal
     '''
     changed_id = [p['prop_id'] for p in dash.callback_context.triggered][0]
     if 'execute.n_clicks' in changed_id:
-        return True
+        return True, counters
     if 'submit.n_clicks' in changed_id:
         experiment_id = str(uuid.uuid4())
         out_path = pathlib.Path('/app/work/data/mlexchange_store/{}/{}'.format(USER, experiment_id))
@@ -731,33 +738,41 @@ def execute(execute, submit, children, num_cpus, num_gpus, action_selection, job
                     input_params[key] = value
         data_path = data_path[0]['file_path']
         if action_selection == 'train_model':
+            counters[0] = counters[0] + 1
+            count = counters[0]
             command = "python3 src/train_model.py"
             directories = [data_path, str(out_path)]
         else:
             training_exp_id = job_data[row[0]]['experiment_id']
             in_path = pathlib.Path('/app/work/data/mlexchange_store/{}/{}'.format(USER, training_exp_id))
         if action_selection == 'evaluate_model':
+            counters[1] = counters[1] + 1
+            count = counters[1]
             command = "python3 src/evaluate_model.py"
             directories = [data_path, str(in_path) + '/model.h5']
         if action_selection == 'prediction_model':
+            counters[2] = counters[2] + 1
+            count = counters[2]
             command = "python3 src/predict_model.py"
             kwargs = {'train_params': job_data[row[0]]['parameters']}
             directories = [data_path, str(in_path) + '/model.h5', str(out_path)]
         if action_selection == 'transfer_learning':
+            counters[3] = counters[3] + 1
+            count = counters[3]
             command = "python3 src/transfer_learning.py"
             directories = [data_path, str(in_path) + '/model.h5', str(out_path)]
         job = SimpleJob(service_type='backend',
                         working_directory='{}'.format(DATA_DIR),
                         uri='mlexchange/tensorflow-neural-networks',
                         cmd=' '.join([command] + directories + ['\'' + json.dumps(input_params) + '\'']),
-                        kwargs={'job_type': action_selection,
+                        kwargs={'job_type': f'{action_selection} {count}',
                                 'experiment_id': experiment_id,
                                 'dataset': filenames,
                                 'params': input_params,
                                 **kwargs})
         job.submit(USER, num_cpus, num_gpus)
-        return False
-    return False
+        return False, counters
+    return False, counters
 
 
 @app.callback(
