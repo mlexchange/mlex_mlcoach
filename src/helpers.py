@@ -1,13 +1,9 @@
-import urllib.request
-
-import json
 import sys
 if sys.version_info[0] < 3:
     from StringIO import StringIO
 else:
     from io import StringIO
 
-import dash_html_components as html
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -64,9 +60,8 @@ def get_job(user, mlex_app, job_type=None, deploy_location=None):
         url += ('&job_type=' + job_type)
     if deploy_location:
         url += ('&deploy_location=' + deploy_location)
-    response = urllib.request.urlopen(url)
-    data = json.loads(response.read())
-    return data
+    response = requests.get(url)
+    return response.json()
 
 
 def get_class_prob(log, start, filename):
@@ -134,10 +129,9 @@ def model_list_GET_call():
     Get a list of algorithms from content registry
     """
     url = 'http://content-api:8000/api/v0/models'
-    response = urllib.request.urlopen(url)
-    list = json.loads(response.read())
+    model_list = requests.get(url).json()
     models = []
-    for item in list:
+    for item in model_list:
         if 'mlcoach' in item['application']:
             models.append({'label': item['name'], 'value': item['content_id']})
     return models
@@ -169,5 +163,5 @@ def get_gui_components(model_uid, comp_group):
         params:     List of model parameters
     '''
     url = f'http://content-api:8000/api/v0/models/{model_uid}/model/{comp_group}/gui_params'
-    response = urllib.request.urlopen(url)
-    return json.loads(response.read())
+    response = requests.get(url)
+    return response.json()
