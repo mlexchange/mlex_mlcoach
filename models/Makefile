@@ -19,11 +19,17 @@ test:
 build_docker: 
 	docker build -t ${IMG_WEB_SVC} -f ./docker/Dockerfile .
 
+build_docker_arm64: 
+	docker build -t ${IMG_WEB_SVC} -f ./docker/Dockerfile_arm64 .
+
 run_docker:
 	docker run -u ${ID_USER $USER}:${ID_GROUP $USER} --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --memory-swap -1 -it -v ${PWD}:/app/work/ -v /mnt/c/Users/postdoc/Documents/Database/born:/app/work/data -p 8888:8888 ${IMG_WEB_SVC}
 
-train_example:
-	docker run -u ${ID_USER $USER}:${ID_GROUP $USER} --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --memory-swap -1 -it --gpus all -v /data/tanchavez/Datasets/born:/app/work/data ${IMG_WEB_SVC} python3 src/train_model.py data/train data/val data/logs '{"rotation_angle": 0, "image_flip": "None", "batch_size": 32, "pooling": "None", "epochs": 10, "nn_model": "ResNet50"}' 
+train_example_gpu:
+	docker run -u ${ID_USER $USER}:${ID_GROUP $USER} --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --memory-swap -1 -it --gpus all -v /Users/tanchavez/Documents/Dataset/born:/app/work/data ${IMG_WEB_SVC} python3 src/train_model.py data/train data/logs '{"rotation_angle": 0, "image_flip": "None", "batch_size": 32, "val_pct": 0, "shuffle": true, "seed": 45, "pooling": "None", "optimizer": "Adam", "loss_function": "" "epochs": 10, "nn_model": "ResNet50"}' 
+
+train_example_cpu:
+	docker run -u ${ID_USER $USER}:${ID_GROUP $USER} --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --memory-swap -1 -it -v /Users/tanchavez/Documents/Dataset/born:/app/work/data ${IMG_WEB_SVC} python3 src/train_model.py data/train data/logs '{"rotation_angle": 0, "image_flip": "None", "batch_size": 32, "val_pct": 0, "shuffle": true, "seed": 45, "pooling": "None", "optimizer": "Adam", "loss_function": "" "epochs": 10, "nn_model": "ResNet50"}' 
 
 evaluate_example:
 	docker run -u ${ID_USER $USER}:${ID_GROUP $USER} --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 --memory-swap -1 -it --gpus all -v /data/tanchavez/Datasets/born:/app/work/data ${IMG_WEB_SVC} python3 src/evaluate_model.py data/test data/logs/model.h5 '{"rotation_angle": 0, "image_flip": "None", "batch_size": 1}'

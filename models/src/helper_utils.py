@@ -2,6 +2,7 @@ import glob
 import os
 
 import numpy as np
+from scipy.ndimage import interpolation
 import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
@@ -62,7 +63,7 @@ COLOR_MODE = 'rgb'          # fixed due to TF models
 
 
 # Data Augmentation + Batch Size
-def data_processing(parameters, data_dir, classes, shuffle):
+def data_processing(parameters, data_dir, shuffle):
     rotation_angle = parameters.rotation_angle
     image_flip = parameters.image_flip
     if image_flip=='None':
@@ -78,52 +79,80 @@ def data_processing(parameters, data_dir, classes, shuffle):
         horizontal_flip = True
         vertical_flip = True
     batch_size = parameters.batch_size
-    seed = 75       # fixed seed
-    datagen = ImageDataGenerator(rotation_range=rotation_angle,
-                                 horizontal_flip=horizontal_flip,
-                                 vertical_flip=vertical_flip)
+    if parameters.target_width and parameters.target_height:
+        target_width = parameters.target_width
+        target_height = parameters.target_height
+    else:
+        target_width = 224
+        target_height = 224
+    shuffle = parameters.shuffle
+    if parameters.seed:
+        seed = parameters.seed
+    else:
+        seed = 45       # fixed seed
+    if parameters.val_pct:
+        datagen = ImageDataGenerator(rotation_range=rotation_angle,
+                                     horizontal_flip=horizontal_flip,
+                                     vertical_flip=vertical_flip,
+                                     validation_split=parameters.val_pct/100 )
+    else:
+        datagen = ImageDataGenerator(rotation_range=rotation_angle,
+                                     horizontal_flip=horizontal_flip,
+                                     vertical_flip=vertical_flip)
 
     first_data = glob.glob(data_dir + '/**/*.*', recursive=True)
     if len(first_data) > 0:
         data_type = os.path.splitext(first_data[0])[-1]
 
         if data_type in ['.tiff', '.tif', '.jpg', '.jpeg', '.png']:
-            data_generator = datagen.flow_from_directory(
-                data_dir,
-                target_size=IMG_SIZE,
-                batch_size=batch_size,
-                color_mode=COLOR_MODE,
-                seed=seed,
-                class_mode='categorical',
-                shuffle=shuffle
-            )
+            data_generator = datagen.flow_from_directory(data_dir,
+                                                         target_size=(target_width, target_height),
+                                                         color_mode=COLOR_MODE,
+                                                         class_mode='categorical',
+                                                         batch_size=batch_size,
+                                                         shuffle=shuffle,
+                                                         seed=seed)
 
-        elif data_type == '.npy':
-            data_path = first_data
-
-            i = 0
-            labels = {}
-            for name in classes:
-                labels[name] = i
-                i += 1
-
-            x = list()
-            y = list()
-            for path in data_path:
-                tmp_arr = np.load(path)
-                input_arr = np.array([[[0, 0, 0] for y in
-                                       range(len(tmp_arr))] for x in range(len(tmp_arr))])
-                for x in range(len(tmp_arr)):
-                    for y in range(len(tmp_arr)):
-                        rgb = int((255 * tmp_arr[x][y]) + 0.5)
-                        input_arr[x][y] = [rgb, rgb, rgb]
-                x.append(input_arr)
-                y.append(labels[path.split('/')[-2]])
-            x = np.array(x)
-            y = tf.keras.utils.to_categorical(y, num_classes=len(classes))
-            data_generator = datagen.flow(x=x,
-                                          y=y,
+        elif data_type == '.npz':
+            x_key = parameters.x_key
+            y_key = parameters.y_key
+            data = np.load(data_dir)
+            x_data = data[x_key]
+            if target_width != x_data.shape[1] or target_height != x_data.shape[2]: # resize if needed
+                data_shape = x_data.shape
+                data_shape[1:2] = [target_width/data_shape[1], target_height/data_shape[2]]
+                x_data = interpolation.zoom(x_data, data_shape)
+            data_generator = datagen.flow(x=x_data,
+                                          y=data[y_key],
                                           batch_size=batch_size,
-                                          shuffle=shuffle)
+                                          shuffle=shuffle,
+                                          seed=seed)
+        # elif data_type == '.npy':         # not fully supported at this time
+        #     data_path = first_data
+        #
+        #     i = 0
+        #     labels = {}
+        #     for name in classes:
+        #         labels[name] = i
+        #         i += 1
+        #
+        #     x = list()
+        #     y = list()
+        #     for path in data_path:
+        #         tmp_arr = np.load(path)
+        #         input_arr = np.array([[[0, 0, 0] for y in
+        #                                range(len(tmp_arr))] for x in range(len(tmp_arr))])
+        #         for x in range(len(tmp_arr)):
+        #             for y in range(len(tmp_arr)):
+        #                 rgb = int((255 * tmp_arr[x][y]) + 0.5)
+        #                 input_arr[x][y] = [rgb, rgb, rgb]
+        #         x.append(input_arr)
+        #         y.append(labels[path.split('/')[-2]])
+        #     x = np.array(x)
+        #     y = tf.keras.utils.to_categorical(y, num_classes=len(classes))
+        #     data_generator = datagen.flow(x=x,
+        #                                   y=y,
+        #                                   batch_size=batch_size,
+        #                                   shuffle=shuffle)
         return data_generator
     return []

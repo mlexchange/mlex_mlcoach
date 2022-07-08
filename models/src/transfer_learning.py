@@ -29,14 +29,8 @@ if __name__ == '__main__':
     data_parameters = DataAugmentationParams(**json.loads(args.parameters))
 
     print('Device: ', tf.test.gpu_device_name())
-    classes = [subdir for subdir in sorted(os.listdir(train_dir)) if os.path.isdir(os.path.join(train_dir, subdir))]
-    class_num = len(classes)
 
-    train_generator = data_processing(data_parameters, train_dir, classes, True)
-    if valid_dir != 'None':
-        valid_generator = data_processing(data_parameters, valid_dir, classes, True)
-    else:
-        valid_generator = []
+    train_generator = data_processing(data_parameters, train_dir)
 
     epochs = transfer_parameters.epochs
     start_layer = transfer_parameters.init_layer
@@ -52,9 +46,8 @@ if __name__ == '__main__':
     model.fit(train_generator,
               epochs=epochs,
               verbose=0,
-              validation_data=valid_generator,
               callbacks=[TrainCustomCallback()],
-              shuffle=True)
+              shuffle=data_parameters.shuffle)
 
     # save model
     model.save(out_dir+'/model.h5')

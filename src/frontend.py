@@ -696,9 +696,11 @@ def refresh_image(import_dir, confirm_import, img_ind, filenames, img_keyword, l
     State('data-path', 'data'),
     State("docker-file-paths", "data"),
     State("counter", "data"),
+    State("npz-img-key", "value"),
+    State("npz-label-key", "value"),
     prevent_intial_call=True)
 def execute(execute, submit, children, num_cpus, num_gpus, action_selection, job_data, row, data_path, filenames,
-            counters):
+            counters, x_key, y_key):
     '''
     This callback submits a job request to the compute service according to the selected action & model
     Args:
@@ -713,6 +715,8 @@ def execute(execute, submit, children, num_cpus, num_gpus, action_selection, job
         data_path:          Local path to data
         filenames:          Filenames in dataset
         counters:           List of counters to assign a number to each job according to its action (train vs evaluate)
+        x_key:              Keyword for x data in NPZ file
+        y_key:              Keyword for y data in NPZ file
     Returns:
         open/close the resources setup modal
     '''
@@ -723,7 +727,7 @@ def execute(execute, submit, children, num_cpus, num_gpus, action_selection, job
         experiment_id = str(uuid.uuid4())
         out_path = pathlib.Path('/app/work/data/mlexchange_store/{}/{}'.format(USER, experiment_id))
         out_path.mkdir(parents=True, exist_ok=True)
-        input_params = {}
+        input_params = {'x_key': x_key, 'y_key': y_key}
         kwargs = {}
         if bool(children):
             try:

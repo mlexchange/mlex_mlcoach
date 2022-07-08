@@ -66,6 +66,13 @@ class DataAugmentationParams(BaseModel):
     rotation_angle: int = Field(description='rotation angle')
     image_flip: ImageFlip
     batch_size: int = Field(description='batch size')
+    val_pct: Optional[int] = Field(description='validation percentage')
+    shuffle: bool = Field(description='shuffle data')
+    target_width: Optional[int] = Field(description='data target width')
+    target_height: Optional[int] = Field(description='data target height')
+    x_key: Optional[str] = Field(description='keyword for x data in NPZ')
+    y_key: Optional[str] = Field(description='keyword for y data in NPZ')
+    seed: Optional[int] = Field(description='random seed')
 
 
 class TrainingParams(DataAugmentationParams):
