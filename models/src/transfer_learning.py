@@ -30,7 +30,7 @@ if __name__ == '__main__':
 
     print('Device: ', tf.test.gpu_device_name())
 
-    train_generator = data_processing(data_parameters, train_dir)
+    (train_generator, valid_generator) = data_processing(data_parameters, train_dir)
 
     epochs = transfer_parameters.epochs
     start_layer = transfer_parameters.init_layer
@@ -46,6 +46,7 @@ if __name__ == '__main__':
     model.fit(train_generator,
               epochs=epochs,
               verbose=0,
+              validation_data=valid_generator,
               callbacks=[TrainCustomCallback()],
               shuffle=data_parameters.shuffle)
 

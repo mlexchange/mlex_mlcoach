@@ -67,7 +67,7 @@ class DataAugmentationParams(BaseModel):
     image_flip: ImageFlip
     batch_size: int = Field(description='batch size')
     val_pct: Optional[int] = Field(description='validation percentage')
-    shuffle: bool = Field(description='shuffle data')
+    shuffle: Optional[bool] = Field(description='shuffle data')
     target_width: Optional[int] = Field(description='data target width')
     target_height: Optional[int] = Field(description='data target height')
     x_key: Optional[str] = Field(description='keyword for x data in NPZ')

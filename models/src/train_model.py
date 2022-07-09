@@ -2,6 +2,7 @@ import argparse
 import json
 import os
 
+import numpy as np
 import tensorflow as tf
 
 from model_validation import TrainingParams, DataAugmentationParams
@@ -19,13 +20,18 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     train_dir = args.train_dir
-    valid_dir = args.valid_dir
     out_dir = args.out_dir
     train_parameters = TrainingParams(**json.loads(args.parameters))
     data_parameters = DataAugmentationParams(**json.loads(args.parameters))
-
     print(tf.test.gpu_device_name())
-    train_generator = data_processing(data_parameters, train_dir)
+    (train_generator, valid_generator) = data_processing(data_parameters, train_dir)
+    try:
+        train_filenames = train_generator.filenames
+        classes = [subdir for subdir in sorted(os.listdir(train_dir)) if os.path.isdir(os.path.join(train_dir, subdir))]
+    except Exception as e:
+        train_filenames = list(range(len(train_generator.__dict__['x'])))     # list of indexes
+        classes = np.unique(train_generator.__dict__['y'], axis=0)            # list of classes
+    class_num = len(classes)
 
     pooling = train_parameters.pooling
     epochs = train_parameters.epochs
@@ -43,11 +49,12 @@ if __name__ == '__main__':
                   loss=loss_func,                   # default categorical_crossentropy
                   metrics=['accuracy'])
     model.summary()
-    tf.keras.utils.plot_model(model, out_dir+'/model_layout.png', show_shapes=True)     # plot NN
+    # tf.keras.utils.plot_model(model, out_dir+'/model_layout.png', show_shapes=True)     # plot NN
     print('Length:', len(model.layers), 'layers')                                       # number of layers
 
     # fit model while also keeping track of data for dash plots.
     model.fit(train_generator,
+              validation_data=valid_generator,
               epochs=epochs,
               verbose=0,
               callbacks=[TrainCustomCallback()],

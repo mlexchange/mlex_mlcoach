@@ -63,7 +63,7 @@ COLOR_MODE = 'rgb'          # fixed due to TF models
 
 
 # Data Augmentation + Batch Size
-def data_processing(parameters, data_dir, shuffle):
+def data_processing(parameters, data_dir):
     rotation_angle = parameters.rotation_angle
     image_flip = parameters.image_flip
     if image_flip=='None':
@@ -85,7 +85,10 @@ def data_processing(parameters, data_dir, shuffle):
     else:
         target_width = 224
         target_height = 224
-    shuffle = parameters.shuffle
+    if parameters.shuffle:
+       shuffle = parameters.shuffle
+    else:
+        shuffle = False
     if parameters.seed:
         seed = parameters.seed
     else:
@@ -94,39 +97,82 @@ def data_processing(parameters, data_dir, shuffle):
         datagen = ImageDataGenerator(rotation_range=rotation_angle,
                                      horizontal_flip=horizontal_flip,
                                      vertical_flip=vertical_flip,
-                                     validation_split=parameters.val_pct/100 )
+                                     validation_split=parameters.val_pct/100)
     else:
         datagen = ImageDataGenerator(rotation_range=rotation_angle,
                                      horizontal_flip=horizontal_flip,
                                      vertical_flip=vertical_flip)
 
+    data_generator = []
     first_data = glob.glob(data_dir + '/**/*.*', recursive=True)
     if len(first_data) > 0:
         data_type = os.path.splitext(first_data[0])[-1]
-
         if data_type in ['.tiff', '.tif', '.jpg', '.jpeg', '.png']:
-            data_generator = datagen.flow_from_directory(data_dir,
-                                                         target_size=(target_width, target_height),
-                                                         color_mode=COLOR_MODE,
-                                                         class_mode='categorical',
-                                                         batch_size=batch_size,
-                                                         shuffle=shuffle,
-                                                         seed=seed)
-
-        elif data_type == '.npz':
-            x_key = parameters.x_key
-            y_key = parameters.y_key
-            data = np.load(data_dir)
-            x_data = data[x_key]
-            if target_width != x_data.shape[1] or target_height != x_data.shape[2]: # resize if needed
-                data_shape = x_data.shape
-                data_shape[1:2] = [target_width/data_shape[1], target_height/data_shape[2]]
-                x_data = interpolation.zoom(x_data, data_shape)
-            data_generator = datagen.flow(x=x_data,
-                                          y=data[y_key],
-                                          batch_size=batch_size,
-                                          shuffle=shuffle,
-                                          seed=seed)
+            if parameters.val_pct:
+                train_generator = datagen.flow_from_directory(data_dir,
+                                                              target_size=(target_width, target_height),
+                                                              color_mode=COLOR_MODE,
+                                                              class_mode='categorical',
+                                                              batch_size=batch_size,
+                                                              shuffle=shuffle,
+                                                              seed=seed,
+                                                              subset='training')
+                valid_generator = datagen.flow_from_directory(data_dir,
+                                                              target_size=(target_width, target_height),
+                                                              color_mode=COLOR_MODE,
+                                                              class_mode='categorical',
+                                                              batch_size=batch_size,
+                                                              shuffle=shuffle,
+                                                              seed=seed,
+                                                              subset='validation')
+            else:
+                train_generator = datagen.flow_from_directory(data_dir,
+                                                              target_size=(target_width, target_height),
+                                                              color_mode=COLOR_MODE,
+                                                              class_mode='categorical',
+                                                              batch_size=batch_size,
+                                                              shuffle=shuffle,
+                                                              seed=seed)
+                valid_generator = []
+            data_generator = (train_generator, valid_generator)
+    
+    if os.path.splitext(data_dir)[-1] == '.npz':
+        x_key = parameters.x_key
+        y_key = parameters.y_key
+        data = np.load(data_dir)
+        x_data = data[x_key]
+        y_data = data[y_key]
+        y_data = tf.keras.utils.to_categorical(y_data, num_classes=len(np.unique(y_data)))
+        if target_width != x_data.shape[1] or target_height != x_data.shape[2]: # resize if needed
+            data_shape = list(x_data.shape)
+            data_shape[0] = 1
+            data_shape[1] = target_width/data_shape[1]
+            data_shape[2] = target_height/data_shape[2]
+            x_data = interpolation.zoom(x_data, data_shape)
+            if len(data_shape)==3:
+                x_data = np.repeat(x_data[:,:,:,np.newaxis], 3, axis=3)  # RGB
+        print(y_data.shape)
+        if parameters.val_pct:
+            train_generator = datagen.flow(x=x_data,
+                                           y=y_data,
+                                           batch_size=batch_size,
+                                           shuffle=shuffle,
+                                           seed=seed,
+                                           subset='training')
+            valid_generator = datagen.flow(x=x_data,
+                                           y=y_data,
+                                           batch_size=batch_size,
+                                           shuffle=shuffle,
+                                           seed=seed,
+                                           subset='validation')
+        else:
+            train_generator = datagen.flow(x=x_data,
+                                           y=data[y_key],
+                                           batch_size=batch_size,
+                                           shuffle=shuffle,
+                                           seed=seed)
+            valid_generator = []
+        data_generator = (train_generator, valid_generator)
         # elif data_type == '.npy':         # not fully supported at this time
         #     data_path = first_data
         #
@@ -154,5 +200,4 @@ def data_processing(parameters, data_dir, shuffle):
         #                                   y=y,
         #                                   batch_size=batch_size,
         #                                   shuffle=shuffle)
-        return data_generator
-    return []
+    return data_generator

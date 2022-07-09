@@ -19,7 +19,7 @@ if __name__ == '__main__':
     model_dir = args.model_dir
     parameters = DataAugmentationParams(**json.loads(args.parameters))
 
-    test_generator = data_processing(parameters, test_dir)
+    (test_generator, tmp) = data_processing(parameters, test_dir)
 
     loaded_model = load_model(model_dir)
     results = loaded_model.evaluate(test_generator,
