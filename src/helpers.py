@@ -95,9 +95,9 @@ def generate_figure(log, start):
             if 'loss' in col:
                 fig.add_trace(go.Scatter(x=df['epoch'], y=df[col], name=col), secondary_y=False)
                 fig.update_yaxes(title_text="loss", secondary_y=False)
-        else:
-            fig.add_trace(go.Scatter(x=df['epoch'], y=df[col], name=col), secondary_y=True)
-            fig.update_yaxes(title_text="accuracy", secondary_y=True)
+            else:
+                fig.add_trace(go.Scatter(x=df['epoch'], y=df[col], name=col), secondary_y=True)
+                fig.update_yaxes(title_text="accuracy", secondary_y=True, range=[0,1])
         fig.update_layout(xaxis_title="epoch", margin=dict(l=20, r=20, t=20, b=20))
         return fig
     except Exception as e:

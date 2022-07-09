@@ -570,7 +570,7 @@ def update_table(n, row, active_cell, slider_value, close_clicks, filenames):
     if row:
         log = data_table[row[0]]["job_logs"]
         if log:
-            if data_table[row[0]]['job_type'] == 'train_model':
+            if data_table[row[0]]['job_type'].split(' ')[0] == 'train_model':
                 start = log.find('epoch')
                 if start > -1 and len(log) > start + 5:
                     fig = generate_figure(log, start)
@@ -619,6 +619,7 @@ def load_parameters(model_selection, action_selection, row):
     Output("img-output", "figure"),
     Output("label-output", "children"),
     Output("img-slider", "max"),
+    Output("img-slider", "value"),
     Output("app-content", "style"),
     Output("warning-cause", "data"),
 
@@ -648,11 +649,13 @@ def refresh_image(import_dir, confirm_import, img_ind, filenames, img_keyword, l
         img-output:         Output figure
         label-output:       Output label
         img-slider-max:     Maximum value of the slider according to the dataset (train vs test)
+        img-slider-value:   Current value of the slider
         content_style:      Content visibility
+        warning-cause:      Cause that triggered warning pop-up
     '''
     changed_id = [p['prop_id'] for p in dash.callback_context.triggered][0]
     if len(filenames)>0:
-        if ('import-dir.n_clicks' in changed_id and not npz_modal) or 'confirm-import.n_clicks' in changed_id:
+        if ('import-dir.n_clicks' in changed_id and not npz_modal) or 'confirm-import.n_clicks' in changed_id or 'img-slider.value' in changed_id:
             content_style = {'display': 'block'}
         try:
             if filenames[0].split('.')[-1] == 'npz':        # npz file
@@ -661,23 +664,27 @@ def refresh_image(import_dir, confirm_import, img_ind, filenames, img_keyword, l
                     data_npy = np.squeeze(data_npz[img_keyword])
                     label_npy = np.squeeze(data_npz[label_keyword])
                     if len(data_npy) != len(label_npy):
-                        return dash.no_update, dash.no_update, dash.no_update, dash.no_update, 'different_size'
+                        return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, 'different_size'
                     slider_max = len(data_npy) - 1
+                    if img_ind>slider_max:
+                        img_ind = 0
                     fig = plot_figure(data_npy[img_ind])
                     label = f"Label: {label_npy[img_ind]}"
                 else:
-                    return dash.no_update, dash.no_update, dash.no_update, {'display': 'None'}, dash.no_update
+                    return dash.no_update, dash.no_update, dash.no_update, dash.no_update, {'display': 'None'}, dash.no_update
             else:                                           # directory
-                image = Image.open(filenames[img_ind])
                 slider_max = len(filenames)-1
+                if img_ind>slider_max:
+                    img_ind = 0
+                image = Image.open(filenames[img_ind])
                 fig = plot_figure(image)
                 label = f"Label: {filenames[img_ind].split('/')[-2]}"  # determined by the last directory in the path
-            return fig, label, slider_max, content_style, dash.no_update
+            return fig, label, slider_max, img_ind, content_style, dash.no_update
         except Exception as e:
             print(f'Exception in refresh_image callback {e}')
-            return dash.no_update, dash.no_update, dash.no_update, {'display': 'None'}, 'wrong_dataset'
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, {'display': 'None'}, 'wrong_dataset'
     else:
-        return dash.no_update, dash.no_update, dash.no_update, {'display': 'None'}, dash.no_update
+        return dash.no_update, dash.no_update, dash.no_update, dash.no_update, {'display': 'None'}, dash.no_update
 
 
 @app.callback(
@@ -805,4 +812,4 @@ def save_results(download, job_data, row):
 
 
 if __name__ == '__main__':
-    app.run_server(debug=True, host='0.0.0.0', port=8052)#, dev_tools_ui=False)
+    app.run_server(debug=True, host='0.0.0.0', port=8062)#, dev_tools_ui=False)
