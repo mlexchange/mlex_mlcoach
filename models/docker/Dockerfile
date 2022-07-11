@@ -1,6 +1,9 @@
-FROM python:3.9
+FROM tensorflow/tensorflow:latest-gpu
 
 COPY docker/requirements.txt requirements.txt
+
+RUN rm /etc/apt/sources.list.d/cuda.list
+RUN rm /etc/apt/sources.list.d/nvidia-ml.list
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
          build-essential\
@@ -8,14 +11,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
          libxext6 \
          libxrender-dev \
          ffmpeg  \
+         graphviz \
+         tree \
     python3-pip &&\
-    pip install --upgrade pip  
+    pip install --upgrade pip
 
 RUN pip install -r requirements.txt
 
 WORKDIR /app/work/
 COPY src/ src/
-COPY ../main.cfg main.cfg
 
 CMD ["bash"]
-#CMD ["export TF_ENABLE_ONEDNN_OPTS=1"]

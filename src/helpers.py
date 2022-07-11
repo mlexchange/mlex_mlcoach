@@ -1,67 +1,52 @@
-import urllib.request
-
-import dash
-import json
-import glob
-import os
 import sys
 if sys.version_info[0] < 3:
     from StringIO import StringIO
 else:
     from io import StringIO
 
-from dash.dependencies import Input, Output, State
-import dash_html_components as html
-import dash_core_components as dcc
-import dash_bootstrap_components as dbc
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import requests
-
-import tensorflow as tf
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
-
-from kwarg_editor import JSONParameterEditor
-
-
-# dimensions of our images.
-img_width, img_height = 223, 223
-input_shape = ((img_width, img_height))
-IMG_SIZE,IMG_SIZE = 223, 223
-nb_channels = 3
 
 
 class SimpleJob:
     def __init__(self,
-                 user,
-                 job_type,
-                 description,
-                 deploy_location,
-                 gpu,
-                 data_uri,
-                 container_uri,
-                 container_cmd,
-                 container_kwargs,
-                 mlex_app = 'mlcoach'):
-        self.user = user
+                 service_type,
+                 working_directory,
+                 uri,
+                 cmd,
+                 kwargs=None,
+                 mlex_app='mlcoach'):
         self.mlex_app = mlex_app
-        self.job_type = job_type
-        self.description = description
-        self.deploy_location = deploy_location
-        self.gpu = gpu
-        self.data_uri = data_uri
-        self.container_uri = container_uri
-        self.container_cmd = container_cmd
-        self.container_kwargs = container_kwargs
+        self.service_type = service_type
+        self.working_directory = working_directory
+        self.job_kwargs = {'uri': uri,
+                           'type': 'docker',
+                           'cmd': cmd,
+                           'kwargs': kwargs}
 
-    def launch_job(self):
-        """
-        Send job to computing service
-        :return:
-        """
-        url = 'http://job-service:8080/api/v0/jobs'
-        return requests.post(url, json=self.__dict__).status_code
+    def submit(self, user, num_cpus, num_gpus):
+        '''
+        Sends job to computing service
+        Args:
+            user:       user UID
+            num_cpus:   Number of CPUs
+            num_gpus:   Number of GPUs
+        Returns:
+            Workflow status
+        '''
+        workflow = {'user_uid': user,
+                    'job_list': [self.__dict__],
+                    'host_list': ['mlsandbox.als.lbl.gov', 'local.als.lbl.gov', 'vaughan.als.lbl.gov'],
+                    'dependencies': {'0':[]},
+                    'requirements': {'num_processors': num_cpus,
+                                     'num_gpus': num_gpus,
+                                     'num_nodes': 1}}
+        print(workflow)
+        url = 'http://job-service:8080/api/v0/workflows'
+        return requests.post(url, json=workflow).status_code
 
 
 # Queries the job from the computing database
@@ -75,193 +60,26 @@ def get_job(user, mlex_app, job_type=None, deploy_location=None):
         url += ('&job_type=' + job_type)
     if deploy_location:
         url += ('&deploy_location=' + deploy_location)
-    response = urllib.request.urlopen(url)
-    data = json.loads(response.read())
-    return data
+    response = requests.get(url)
+    return response.json()
 
 
-# Generates the dash widgets based on the json file associated with the app
-def generate_dash_widget(dash_schema):
-    parameters_schema = dash_schema['gui_parameters']
-    parameters = JSONParameterEditor(_id={'type': 'labelmaker'},
-                                     parameters=parameters_schema)
-    return parameters
-
-
-# Process the images and allows randomization as part of the training with
-# random flips or angles if you allow it
-def data_processing(values, train_data_dir, val_data_dir, test_data_dir):
-    rotation_angle = values[0]
-    horizontal_flip = 'horiz' in values[1]
-    vertical_flip = 'vert' in values[1]
-    batch_size = values[2]
-    train_datagen = ImageDataGenerator(
-        rotation_range=rotation_angle,
-        horizontal_flip=horizontal_flip,
-        vertical_flip=vertical_flip)
-
-    test_datagen = ImageDataGenerator(
-        rotation_range=rotation_angle,
-        horizontal_flip=horizontal_flip,
-        vertical_flip=vertical_flip)
-
-    first_data = glob.glob(train_data_dir + '/**/*.*', recursive=True)
-    data_type = os.path.splitext(first_data[1])[-1]
-
-    if data_type == '.jpeg':
-        train_generator = train_datagen.flow_from_directory(
-            train_data_dir,
-            target_size=(img_height, img_width),
-            batch_size=batch_size,
-            color_mode="rgb",
-            class_mode='categorical')
-
-        valid_generator = []
-
-        test_generator = test_datagen.flow_from_directory(
-            test_data_dir,
-            target_size=(img_height, img_width),
-            color_mode="rgb",
-            batch_size=1,
-            class_mode='categorical',
-            shuffle=False)
-
-    elif data_type == '.npy':
-        train_paths = first_data
-        validation_paths = glob.glob(val_data_dir + '/**/*.*', recursive=True)
-        test_paths = glob.glob(test_data_dir + '/**/*.*', recursive=True)
-
-        i = 0
-        labels = {}
-        for name in classes:
-            labels[name] = i
-            i += 1
-
-        xTrain = list()
-        yTrain = list()
-        xValid = list()
-        yValid = list()
-        xTest = list()
-        yTest = list()
-
-        for path in train_paths:
-            tmp_arr = np.load(path)
-
-            input_arr = np.array([[[0, 0, 0] for y in
-                                   range(len(tmp_arr))] for x in range(len(tmp_arr))])
-            for x in range(len(tmp_arr)):
-                for y in range(len(tmp_arr)):
-                    rgb = int((255 * tmp_arr[x][y]) + 0.5)
-                    input_arr[x][y] = [rgb, rgb, rgb]
-            xTrain.append(input_arr)
-            yTrain.append(labels[path.split('/')[-2]])
-
-        for path in validation_paths:
-            tmp_arr = np.load(path)
-
-            input_arr = np.array([[[0, 0, 0] for y in
-                                   range(len(tmp_arr))] for x in range(len(tmp_arr))])
-            for x in range(len(tmp_arr)):
-                for y in range(len(tmp_arr)):
-                    rgb = int((255 * tmp_arr[x][y]) + 0.5)
-                    input_arr[x][y] = [rgb, rgb, rgb]
-            xValid.append(input_arr)
-            yValid.append(labels[path.split('/')[-2]])
-
-        for path in test_paths:
-            tmp_arr = np.load(path)
-
-            input_arr = np.array([[[0, 0, 0] for y in
-                                   range(len(tmp_arr))] for x in range(len(tmp_arr))])
-            for x in range(len(tmp_arr)):
-                for y in range(len(tmp_arr)):
-                    rgb = int((255 * tmp_arr[x][y]) + 0.5)
-                    input_arr[x][y] = [rgb, rgb, rgb]
-            xTest.append(input_arr)
-            yTest.append(labels[path.split('/')[-2]])
-
-        xTrain = np.array(xTrain)
-        xValid = np.array(xValid)
-        xTest = np.array(xTest)
-        yTrain = tf.keras.utils.to_categorical(yTrain, num_classes=14)
-        yValid = tf.keras.utils.to_categorical(yValid, num_classes=14)
-        yTest = tf.keras.utils.to_categorical(yTest, num_classes=14)
-
-        train_generator = train_datagen.flow(
-            x=xTrain,
-            y=yTrain,
-            batch_size=batch_size,
-            shuffle=True)
-
-        valid_generator = test_datagen.flow(
-            x=xValid,
-            y=yValid,
-            batch_size=batch_size,
-            shuffle=True)
-
-        test_generator = test_datagen.flow(
-            x=xTest,
-            y=yTest,
-            batch_size=batch_size,
-            shuffle=True)
-
-    return train_generator, valid_generator, test_generator
-
-
-# keras callbacks for model training.  Threads while keras functions are running
-# so that you can see training or evaluation of the model in progress
-class fit_myCallback(tf.keras.callbacks.Callback):
-    # For model training
-    def on_batch_end(self, epoch, logs={}):
-        accuracy_chart.add_rows([logs.get('accuracy')])
-        loss_chart.add_rows([logs.get('loss')])
-
-    def on_train_end(self, logs={}):
-        st.text("Accuracy: " + str(logs.get('accuracy')) + " Loss: " +
-                str(logs.get('loss')))
-
-
-# creates a model based on the options given by the user in the streamlit
-# interface and trains it off of train_generator data
-def create_model(values, train_generator, valid_generator, class_num):
-    pooling = values[0]
-    stepoch = values[1]
-    epochs = values[2]
-    value = values[3]
-    print(values)
-    fit_callbacks = fit_myCallback()
-    code = compile(
-            "tf.keras.applications." + value +
-            "(include_top=True, weights=None, input_tensor=None," +
-            "pooling=" + pooling +
-            ", classes= class_num)", "<string>", "eval")
-    model = eval(code)
-    tf.keras.utils.plot_model(model, "model_layout.png", show_shapes=True)
-    model.compile(
-            optimizer='adam', loss='categorical_crossentropy',
-            metrics=['accuracy'])
-    # fit model while also keeping track of data for dash plots.
-    model.fit(train_generator,
-              steps_per_epoch=stepoch,
-              epochs=epochs,
-              verbose=1,
-              validation_data=valid_generator,
-              callbacks=[fit_callbacks],
-              shuffle=True)
-    return model
-
-
-def get_class_prob(log, start, slider_value, classes):
+def get_class_prob(log, start, filename):
     end = log.find('Prediction process completed')
     if end == -1:
         end = len(log)
     log = log[start:end]
     df = pd.read_csv(StringIO(log.replace('\n\n', '\n')), sep=' ')
     try:
-        res = df.iloc[slider_value]
-        return 'Class: '+ classes[int(res['class'])] + '\nProbability: ' + str(res['probability'])
+        res = df.loc[df['filename'] == filename]    # search results for the selected file
+        fig = px.bar(res.iloc[: , 1:])
+        fig.update_layout(yaxis_title="probability")
+        fig.update_xaxes(showgrid=False,
+                         showticklabels=False,
+                         zeroline=False)
+        return fig #res.to_string(index=False)
     except Exception as err:
-        return ''
+        return go.Figure(go.Scatter(x=[], y=[]))
 
 
 # Generate loss plot
@@ -271,17 +89,95 @@ def generate_figure(log, start):
         end = len(log)
     log = log[start:end]
     df = pd.read_csv(StringIO(log.replace('\n\n', '\n')), sep=' ')
-    df.set_index('epoch', inplace=True)
     try:
-        fig = px.line(df)
-        fig.update_layout(xaxis_title="epoch", yaxis_title="loss", margin=dict(l=20, r=20, t=20, b=20))
+        fig = make_subplots(specs=[[{"secondary_y": True}]])
+        for col in list(df.columns)[1:]:
+            if 'loss' in col:
+                fig.add_trace(go.Scatter(x=df['epoch'], y=df[col], name=col), secondary_y=False)
+                fig.update_yaxes(title_text="loss", secondary_y=False)
+            else:
+                fig.add_trace(go.Scatter(x=df['epoch'], y=df[col], name=col), secondary_y=True)
+                fig.update_yaxes(title_text="accuracy", secondary_y=True, range=[0,1])
+        fig.update_layout(xaxis_title="epoch", margin=dict(l=20, r=20, t=20, b=20))
         return fig
-    except Exception:
+    except Exception as e:
+        print(e)
         return go.Figure(go.Scatter(x=[], y=[]))
 
+
+def plot_figure(image):
+    fig = px.imshow(image, height=350)
+    fig.update_xaxes(showgrid=False,
+                     showticklabels=False,
+                     zeroline=False)
+    fig.update_yaxes(showgrid=False,
+                     showticklabels=False,
+                     zeroline=False)
+    fig.update_layout(margin=dict(l=0, r=0, t=0, b=10))
+    fig.update_traces(dict(showscale=False, coloraxis=None))
+    return fig
 
 # saves model as an .h5 file on local disk
 def save_model(model, save_path='my_model.h5'):
     # save model
     model.save(save_path)
     print("Saved to disk")
+
+
+def model_list_GET_call():
+    """
+    Get a list of algorithms from content registry
+    """
+    url = 'http://content-api:8000/api/v0/models'
+    model_list = requests.get(url).json()
+    models = []
+    for item in model_list:
+        if 'mlcoach' in item['application']:
+            models.append({'label': item['name'], 'value': item['content_id']})
+    return models
+
+
+def get_model(model_uid):
+    '''
+    This function gets the algorithm dict from content registry
+    Args:
+         model_uid:     Model UID
+    Returns:
+        service_type:   Backend/Frontend
+        content_uri:    URI
+    '''
+    url = 'http://content-api:8000/api/v0/contents/{}/content'.format(model_uid)
+    content = requests.get(url).json()
+    if 'map' in content:
+        return content['service_type'], content['uri']
+    return content['service_type'], content['uri']
+
+
+def get_gui_components(model_uid, comp_group):
+    '''
+    Returns the GUI components of the corresponding model and action
+    Args:
+        model_uid:  Model UID
+        comp_group: Action, e.g. training, testing, etc
+    Returns:
+        params:     List of model parameters
+    '''
+    url = f'http://content-api:8000/api/v0/models/{model_uid}/model/{comp_group}/gui_params'
+    response = requests.get(url)
+    return response.json()
+
+
+def init_counter(username):
+    job_list = get_job(username, 'mlcoach')
+    job_types = ['train_model', 'evaluate_model', 'prediction_model', 'transfer_learning']
+    counters = [-1, -1, -1, -1]
+    if job_list is not None:
+        for indx, job_type in enumerate(job_types):
+            for job in reversed(job_list):
+                last_job = job['job_kwargs']['kwargs']['job_type'].split()
+                value = int(last_job[-1])
+                last_job = ' '.join(last_job[0:-1])
+                if last_job == job_type:
+                    counters[indx] = value
+                    break
+    return counters

@@ -35,11 +35,12 @@ def _dispatcher(*_):
         if callback.input == _input and callback.output == _output:
             return_value = callback.callable(triggered[0]['value'])
             if return_value is None:
-                warnings.warn(f'A callback returned None. Perhaps you forgot a return value? Callback: {repr(callback.callable)}')
+                warnings.warn(
+                    f'A callback returned None. Perhaps you forgot a return value? Callback: {repr(callback.callable)}')
             return return_value
 
 
-def targeted_callback(callback, input:Input, output:Output, *states:State, app=app, prevent_initial_call=None):
+def targeted_callback(callback, input: Input, output: Output, *states: State, app=app, prevent_initial_call=None):
     if prevent_initial_call is None:
         prevent_initial_call = app.config.prevent_initial_callbacks
 
@@ -61,4 +62,5 @@ def targeted_callback(callback, input:Input, output:Output, *states:State, app=a
                 callback_spec['state'].extend([state.to_dict() for state in states])
     else:
         app.callback(output, input, *states, prevent_initial_call=prevent_initial_call)(_dispatcher)
+
     _targeted_callbacks.append(Callback(input, output, callback))

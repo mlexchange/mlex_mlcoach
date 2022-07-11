@@ -9,9 +9,14 @@ First, let's install docker:
 * Next go into the mlex_mlcoach
 * type `docker-compose up --build` into your terminal
 
+In a separate termina:
+
+* cd models
+* run `make build_docker`
+
 Next, open up the dash app:
 
-* Dash app: http://localhost:8050/
+* Dash app: http://localhost:8062/
 
 # Copyright
 MLExchange Copyright (c) 2021, The Regents of the University of California, through Lawrence Berkeley National Laboratory (subject to receipt of any required approvals from the U.S. Dept. of Energy). All rights reserved.
