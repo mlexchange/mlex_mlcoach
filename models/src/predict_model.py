@@ -26,11 +26,14 @@ if __name__ == '__main__':
     out_dir = args.out_dir
     data_parameters = DataAugmentationParams(**json.loads(args.parameters))
 
-    classes = [subdir for subdir in sorted(os.listdir(test_dir)) if os.path.isdir(os.path.join(test_dir, subdir))]
-    class_num = len(classes)
+    (test_generator, tmp) = data_processing(data_parameters, test_dir)
+    try:
+        test_filenames = test_generator.filenames
+        classes = [subdir for subdir in sorted(os.listdir(test_dir)) if os.path.isdir(os.path.join(test_dir, subdir))]
+    except Exception as e:
+        test_filenames = list(range(len(test_generator.__dict__['x'])))     # list of indexes
+        classes = np.unique(train_generator.__dict__['y'], axis=0)          # list of classes
 
-    test_generator = data_processing(data_parameters, test_dir, classes, False)
-    test_filenames = test_generator.filenames
     df_files = pd.DataFrame(test_filenames, columns=['filename'])
     loaded_model = load_model(model_dir)
     prob = loaded_model.predict(test_generator,
