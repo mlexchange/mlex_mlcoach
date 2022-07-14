@@ -408,12 +408,13 @@ def upload_zip(iscompleted, upload_filename):
     Input('import-format', 'value'),
     Input('my-toggle-switch', 'value'),
     Input('jobs-table', 'selected_rows'),
+    Input("clear-data", "n_clicks"),
 
     State('dest-dir-name', 'value'),
     State('jobs-table', 'data')
 )
 def file_manager(browse_format, browse_n_clicks, import_n_clicks, delete_n_clicks, move_dir_n_clicks, rows,
-                 selected_paths, import_format, docker_path, job_rows, dest, job_data):
+                 selected_paths, import_format, docker_path, job_rows, clear_data, dest, job_data):
     '''
     This callback displays manages the actions of file manager
     Args:
@@ -429,6 +430,7 @@ def file_manager(browse_format, browse_n_clicks, import_n_clicks, delete_n_click
         job_rows:           Selected rows in job table. If it's not a "training" model, it will load its results
                             instead of the data uploaded through File Manager. This is so that the user can observe
                             previous evaluation results
+        clear_data:         Clear the loaded images
         dest:               Destination path
         job_data:           Data in job table
     Returns
@@ -494,6 +496,8 @@ def file_manager(browse_format, browse_n_clicks, import_n_clicks, delete_n_click
     
     if changed_id == 'import-dir.n_clicks':
         return files, list_filename, selected_files
+    elif changed_id == 'clear-data.n_clicks':
+        return [], [], []
     else:
         return files, dash.no_update, dash.no_update
 
@@ -624,7 +628,6 @@ def load_parameters(model_selection, action_selection, row):
     Output("app-content", "style"),
     Output("warning-cause", "data"),
 
-    #Input("inherit-data", "n_clicks"),
     Input("import-dir", "n_clicks"),
     Input("confirm-import", "n_clicks"),
     Input("img-slider", "value"),

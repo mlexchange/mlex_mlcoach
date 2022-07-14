@@ -184,8 +184,8 @@ data_access = html.Div([
 file_explorer = html.Div(
     [
         dbc.Button(
-            "Inherit Dataset from Labelmaker",
-            id="inherit-data",
+            "Clear Images",
+            id="clear-data",
             size="lg",
             className='m-1',
             color="secondary",
