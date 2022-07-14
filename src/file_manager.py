@@ -1,6 +1,7 @@
 import copy
 import os
 import pathlib
+import requests
 
 import dash_bootstrap_components as dbc
 import dash_core_components as dcc
@@ -15,7 +16,8 @@ DOCKER_HOME = str(DOCKER_DATA) + '/'
 LOCAL_HOME = str(LOCAL_DATA)
 
 UPLOAD_FOLDER_ROOT = DOCKER_DATA / 'upload'
-
+FILENAMES_DEFAULT = requests.get(f'http://labelmaker-api:8005/api/v0/filenames').json()['filenames']
+DATAPATH_DEFAULT = requests.get(f'http://labelmaker-api:8005/api/v0/datapath').json()['datapath']
 
 # FILES DISPLAY
 file_paths_table = html.Div(
@@ -182,6 +184,16 @@ data_access = html.Div([
 file_explorer = html.Div(
     [
         dbc.Button(
+            "Inherit Dataset from Labelmaker",
+            id="inherit-data",
+            size="lg",
+            className='m-1',
+            color="secondary",
+            outline=True,
+            n_clicks=0,
+            style={'width': '100%', 'justify-content': 'center'}
+        ),
+        dbc.Button(
             "Open File Manager",
             id="collapse-button",
             size="lg",
@@ -217,10 +229,11 @@ file_explorer = html.Div(
            is_open=False,
         ),
         dcc.Store(id='dummy-data', data=[]),
-        dcc.Store(id='docker-file-paths', data=[]),
-        dcc.Store(id='data-path', data=[]),
+        dcc.Store(id='docker-file-paths', data=FILENAMES_DEFAULT),
+        dcc.Store(id='data-path', data=DATAPATH_DEFAULT),
     ]
 )
+
 
 
 def move_a_file(source, destination):
@@ -279,7 +292,7 @@ def add_paths_from_dir(dir_path, supported_formats, list_file_path):
     return list_file_path
 
 
-def filename_list(directory, format):
+def filename_list(directory, form):
     '''
     Args:
         directory, str:     full path of a directory
@@ -289,14 +302,14 @@ def filename_list(directory, format):
     '''
     hidden_formats = ['DS_Store']
     files = []
-    if format == 'dir':
+    if form == 'dir':
         if os.path.exists(directory):
             for filepath in pathlib.Path(directory).glob('**/*'):
                 if os.path.isdir(filepath):
                     files.append({'file_path': str(filepath.absolute()), 'file_type': 'dir'})
     else:
-        format = format.split(',')
-        for f_ext in format:
+        form = form.split(',')
+        for f_ext in form:
             if os.path.exists(directory):
                 for filepath in pathlib.Path(directory).glob('**/{}'.format(f_ext)):
                     if os.path.isdir(filepath):

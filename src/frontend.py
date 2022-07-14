@@ -10,6 +10,7 @@ import dash_bootstrap_components as dbc
 import dash_core_components as dcc
 import dash_html_components as html
 import dash_table
+import dash_daq as daq
 import dash_uploader as du
 import numpy as np
 import pandas as pd
@@ -18,7 +19,8 @@ import plotly.graph_objects as go
 import uuid
 
 from file_manager import filename_list, move_a_file, move_dir, add_paths_from_dir, \
-                         check_duplicate_filename, docker_to_local_path, local_to_docker_path, file_explorer
+                         check_duplicate_filename, docker_to_local_path, local_to_docker_path, \
+                         file_explorer, DOCKER_DATA, DOCKER_HOME, LOCAL_HOME, UPLOAD_FOLDER_ROOT
 from helpers import SimpleJob
 from helpers import get_job, generate_figure, get_class_prob, model_list_GET_call, plot_figure, get_gui_components,\
     init_counter
@@ -32,11 +34,6 @@ app = dash.Dash(__name__, external_stylesheets=external_stylesheets, suppress_ca
 DATA_DIR = str(os.environ['DATA_DIR'])
 USER = 'admin'
 MODELS = model_list_GET_call()
-DOCKER_DATA = pathlib.Path.home() / 'data'
-LOCAL_DATA = str(os.environ['DATA_DIR'])
-DOCKER_HOME = str(DOCKER_DATA) + '/'
-LOCAL_HOME = str(LOCAL_DATA)
-UPLOAD_FOLDER_ROOT = DOCKER_DATA / 'upload'
 
 
 RESOURCES_SETUP = html.Div(
@@ -199,7 +196,7 @@ CONTENT = [
                                                      className='m-1',
                                                      style={'width': '100%', 'justify-content': 'center'})
                                           ],
-                              style={'display': 'None'}),
+                              style={'display': 'none'}),
                       ], style={'height': '32rem'})
                       ]),
             width=5),
@@ -494,7 +491,11 @@ def file_manager(browse_format, browse_n_clicks, import_n_clicks, delete_n_click
             files = filename_list(DOCKER_DATA, browse_format)
     if not docker_path:
         files = docker_to_local_path(files, DOCKER_HOME, LOCAL_HOME)
-    return files, list_filename, selected_files
+    
+    if changed_id == 'import-dir.n_clicks':
+        return files, list_filename, selected_files
+    else:
+        return files, dash.no_update, dash.no_update
 
 
 @app.callback(
@@ -623,11 +624,12 @@ def load_parameters(model_selection, action_selection, row):
     Output("app-content", "style"),
     Output("warning-cause", "data"),
 
+    #Input("inherit-data", "n_clicks"),
     Input("import-dir", "n_clicks"),
     Input("confirm-import", "n_clicks"),
     Input("img-slider", "value"),
-
-    State("docker-file-paths", "data"),
+    Input("docker-file-paths", "data"),
+    
     State("npz-img-key", "value"),
     State("npz-label-key", "value"),
     State("npz-modal", "is_open"),
@@ -654,9 +656,7 @@ def refresh_image(import_dir, confirm_import, img_ind, filenames, img_keyword, l
         warning-cause:      Cause that triggered warning pop-up
     '''
     changed_id = [p['prop_id'] for p in dash.callback_context.triggered][0]
-    if len(filenames)>0:
-        if ('import-dir.n_clicks' in changed_id and not npz_modal) or 'confirm-import.n_clicks' in changed_id or 'img-slider.value' in changed_id:
-            content_style = {'display': 'block'}
+    if len(filenames)>0 and not npz_modal:
         try:
             if filenames[0].split('.')[-1] == 'npz':        # npz file
                 if img_keyword is not None and label_keyword is not None:
@@ -679,7 +679,7 @@ def refresh_image(import_dir, confirm_import, img_ind, filenames, img_keyword, l
                 image = Image.open(filenames[img_ind])
                 fig = plot_figure(image)
                 label = f"Label: {filenames[img_ind].split('/')[-2]}"  # determined by the last directory in the path
-            return fig, label, slider_max, img_ind, content_style, dash.no_update
+            return fig, label, slider_max, img_ind, {'display': 'block'}, dash.no_update
         except Exception as e:
             print(f'Exception in refresh_image callback {e}')
             return dash.no_update, dash.no_update, dash.no_update, dash.no_update, {'display': 'None'}, 'wrong_dataset'
