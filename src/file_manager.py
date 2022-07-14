@@ -186,25 +186,27 @@ data_access = html.Div([
 
 file_explorer = html.Div(
     [
-        dbc.Button(
-            "Refresh Images",
-            id="refresh-data",
-            size="lg",
-            className='m-1',
-            color="secondary",
-            outline=True,
-            n_clicks=0,
-            style={'width': '47%', 'justify-content': 'center'}
-        ),
-        dbc.Button(
-            "Clear Images",
-            id="clear-data",
-            size="lg",
-            className='m-1',
-            color="secondary",
-            outline=True,
-            n_clicks=0,
-            style={'width': '47%', 'justify-content': 'center'}
+        dbc.Row([
+            dbc.Col(dbc.Button(
+                        "Refresh Images",
+                        id="refresh-data",
+                        size="lg",
+                        className='m-1',
+                        color="secondary",
+                        outline=True,
+                        n_clicks=0,
+                        style={'width': '100%'}), width=6),
+            dbc.Col(dbc.Button(
+                        "Clear Images",
+                        id="clear-data",
+                        size="lg",
+                        className='m-1',
+                        color="secondary",
+                        outline=True,
+                        n_clicks=0,
+                        style={'width': '100%'}), width=6) 
+            ],
+            justify = 'center'
         ),
         dbc.Button(
             "Open File Manager",
