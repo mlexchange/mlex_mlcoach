@@ -17,6 +17,7 @@ import pandas as pd
 import PIL.Image as Image
 import plotly.graph_objects as go
 import uuid
+import requests
 
 from file_manager import filename_list, move_a_file, move_dir, add_paths_from_dir, \
                          check_duplicate_filename, docker_to_local_path, local_to_docker_path, \
@@ -409,12 +410,13 @@ def upload_zip(iscompleted, upload_filename):
     Input('my-toggle-switch', 'value'),
     Input('jobs-table', 'selected_rows'),
     Input("clear-data", "n_clicks"),
+    Input("refresh-data", "n_clicks"),
 
     State('dest-dir-name', 'value'),
     State('jobs-table', 'data')
 )
 def file_manager(browse_format, browse_n_clicks, import_n_clicks, delete_n_clicks, move_dir_n_clicks, rows,
-                 selected_paths, import_format, docker_path, job_rows, clear_data, dest, job_data):
+                 selected_paths, import_format, docker_path, job_rows, clear_data, refresh_data, dest, job_data):
     '''
     This callback displays manages the actions of file manager
     Args:
@@ -431,6 +433,7 @@ def file_manager(browse_format, browse_n_clicks, import_n_clicks, delete_n_click
                             instead of the data uploaded through File Manager. This is so that the user can observe
                             previous evaluation results
         clear_data:         Clear the loaded images
+        refresh_data:       Refresh the loaded images 
         dest:               Destination path
         job_data:           Data in job table
     Returns
@@ -494,10 +497,19 @@ def file_manager(browse_format, browse_n_clicks, import_n_clicks, delete_n_click
     if not docker_path:
         files = docker_to_local_path(files, DOCKER_HOME, LOCAL_HOME)
     
-    if changed_id == 'import-dir.n_clicks':
+    if changed_id == 'refresh-data.n_clicks':
+        list_filename, selected_files = [], []
+        datapath = requests.get(f'http://labelmaker-api:8005/api/v0/import/datapath').json()
+        if bool(datapath['datapath']) and os.path.isdir(datapath['datapath'][0]['file_path']):
+            list_filename, selected_files = datapath['filenames'], datapath['datapath'][0]['file_path']
+        return files,  list_filename, selected_files
+        
+    elif changed_id == 'import-dir.n_clicks':
         return files, list_filename, selected_files
+        
     elif changed_id == 'clear-data.n_clicks':
         return [], [], []
+
     else:
         return files, dash.no_update, dash.no_update
 

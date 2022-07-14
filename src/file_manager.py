@@ -17,7 +17,7 @@ LOCAL_HOME = str(LOCAL_DATA)
 
 UPLOAD_FOLDER_ROOT = DOCKER_DATA / 'upload'
 DATAPATH_DEFAULT, FILENAMES_DEFAULT = [], []
-DATAPATH = requests.get(f'http://labelmaker-api:8005/api/v0/export/datapath').json()
+DATAPATH = requests.get(f'http://labelmaker-api:8005/api/v0/import/datapath').json()
 if bool(DATAPATH['datapath']) and os.path.isdir(DATAPATH['datapath'][0]['file_path']):
     DATAPATH_DEFAULT = DATAPATH['datapath'][0]['file_path']
     FILENAMES_DEFAULT = DATAPATH['filenames']
@@ -187,6 +187,16 @@ data_access = html.Div([
 file_explorer = html.Div(
     [
         dbc.Button(
+            "Refresh Images",
+            id="refresh-data",
+            size="lg",
+            className='m-1',
+            color="secondary",
+            outline=True,
+            n_clicks=0,
+            style={'width': '47%', 'justify-content': 'center'}
+        ),
+        dbc.Button(
             "Clear Images",
             id="clear-data",
             size="lg",
@@ -194,7 +204,7 @@ file_explorer = html.Div(
             color="secondary",
             outline=True,
             n_clicks=0,
-            style={'width': '100%', 'justify-content': 'center'}
+            style={'width': '47%', 'justify-content': 'center'}
         ),
         dbc.Button(
             "Open File Manager",
