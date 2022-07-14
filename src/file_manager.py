@@ -16,8 +16,11 @@ DOCKER_HOME = str(DOCKER_DATA) + '/'
 LOCAL_HOME = str(LOCAL_DATA)
 
 UPLOAD_FOLDER_ROOT = DOCKER_DATA / 'upload'
-FILENAMES_DEFAULT = requests.get(f'http://labelmaker-api:8005/api/v0/filenames').json()['filenames']
-DATAPATH_DEFAULT = requests.get(f'http://labelmaker-api:8005/api/v0/datapath').json()['datapath']
+DATAPATH_DEFAULT, FILENAMES_DEFAULT = [], []
+DATAPATH = requests.get(f'http://labelmaker-api:8005/api/v0/export/datapath').json()
+if bool(DATAPATH['datapath']):
+    DATAPATH_DEFAULT = DATAPATH['datapath'][0]['file_path']
+    FILENAMES_DEFAULT = DATAPATH['filenames']
 
 # FILES DISPLAY
 file_paths_table = html.Div(
