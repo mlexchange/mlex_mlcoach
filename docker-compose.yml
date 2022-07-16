@@ -11,7 +11,8 @@ services:
     environment:
       DATA_DIR: "${PWD}/data/"
     volumes:
-      - ${PWD}:/app/work
+      - ./data:/app/work/data
+      - ./src:/app/work/src
     ports:
       - "8062:8062"
     networks:
