@@ -97,7 +97,7 @@ JOB_STATUS = dbc.Card(
                         fixed_rows={'headers': True},
                         css=[{"selector": ".show-hide", "rule": "display: none"}],
                         style_data_conditional=[
-                            {'if': {'column_id': 'status', 'filter_query': '{status} = completed'},
+                            {'if': {'column_id': 'status', 'filter_query': '{status} = complete'},
                              'backgroundColor': 'green',
                              'color': 'white'},
                             {'if': {'column_id': 'status', 'filter_query': '{status} = failed'},
@@ -131,9 +131,9 @@ SIDEBAR = [
                         id='action',
                         options=[
                             {'label': 'Model Training', 'value': 'train_model'},
-                            {'label': 'Evaluate Model on Data', 'value': 'evaluate_model'},
+                            # {'label': 'Evaluate Model on Data', 'value': 'evaluate_model'},
                             {'label': 'Test Prediction using Model', 'value': 'prediction_model'},
-                            {'label': 'Transfer Learning', 'value': 'transfer_learning'},
+                            # {'label': 'Transfer Learning', 'value': 'transfer_learning'},
                         ],
                         value='train_model')
                 ]),
@@ -592,10 +592,10 @@ def update_table(n, row, active_cell, slider_value, close_clicks, filenames):
                 if start > -1 and len(log) > start + 5:
                     fig = generate_figure(log, start)
                     style_fig = {'width': '100%', 'display': 'block'}
-            if data_table[row[0]]['job_type'] == 'evaluate_model':
+            if data_table[row[0]]['job_type'].split(' ')[0] == 'evaluate_model':
                 val = log
                 style_text = {'width': '100%', 'display': 'block'}
-            if data_table[row[0]]['job_type'] == 'prediction_model':
+            if data_table[row[0]]['job_type'].split(' ')[0] == 'prediction_model':
                 start = log.find('filename')
                 if start > -1 and len(log) > start + 10:
                     fig = get_class_prob(log, start, filenames[slider_value])
