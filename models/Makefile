@@ -21,6 +21,9 @@ test:
 build_docker: 
 	docker build -t ${IMG_WEB_SVC} -f ./docker/Dockerfile .
 
+build_docker_gpu: 
+	docker build -t ${IMG_WEB_SVC} -f ./docker/Dockerfile_gpu .
+
 build_docker_arm64: 
 	docker build -t ${IMG_WEB_SVC} -f ./docker/Dockerfile_arm64 .
 
