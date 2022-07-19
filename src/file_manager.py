@@ -188,23 +188,23 @@ file_explorer = html.Div(
     [
         dbc.Row([
             dbc.Col(dbc.Button(
-                        "Refresh Images",
+                        "Load/Refresh Data",
                         id="refresh-data",
                         size="lg",
                         className='m-1',
                         color="secondary",
                         outline=True,
                         n_clicks=0,
-                        style={'width': '100%'}), width=6),
+                        style={'width': '100%'}), width=7),
             dbc.Col(dbc.Button(
-                        "Clear Images",
+                        "Clear Data",
                         id="clear-data",
                         size="lg",
                         className='m-1',
                         color="secondary",
                         outline=True,
                         n_clicks=0,
-                        style={'width': '100%'}), width=6) 
+                        style={'width': '100%'}), width=5) 
             ],
             justify = 'center'
         ),
