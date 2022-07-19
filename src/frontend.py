@@ -446,7 +446,8 @@ def file_manager(browse_format, browse_n_clicks, import_n_clicks, delete_n_click
     # if a previous job is selected, it's data is automatically plotted
     if 'jobs-table.selected_rows' in changed_id and job_rows is not None:
         if job_data[job_rows[0]]["job_type"].split()[-1] != 'train_model':
-            return dash.no_update, job_data[job_rows[0]]["dataset"], dash.no_update
+            filenames = add_paths_from_dir(job_data[job_rows[0]]["dataset"], ['tiff', 'tif', 'jpg', 'jpeg', 'png'], [])
+            return dash.no_update, filenames, dash.no_update
 
     supported_formats = []
     import_format = import_format.split(',')
@@ -500,7 +501,7 @@ def file_manager(browse_format, browse_n_clicks, import_n_clicks, delete_n_click
     
     if changed_id == 'refresh-data.n_clicks':
         list_filename, selected_files = [], []
-        datapath = requests.get(f'http://labelmaker-api:8005/api/v0/export/datapath').json()
+        datapath = requests.get(f'http://labelmaker-api:8005/api/v0/import/datapath').json()
         if bool(datapath['datapath']) and os.path.isdir(datapath['datapath'][0]['file_path']):
             list_filename, selected_files = datapath['filenames'], datapath['datapath'][0]['file_path']
         return files,  list_filename, selected_files
@@ -532,9 +533,11 @@ def file_manager(browse_format, browse_n_clicks, import_n_clicks, delete_n_click
     Input('modal-close', 'n_clicks'),
 
     State('docker-file-paths', 'data'),
+    State('jobs-table', 'data'),
+    State('results-plot', 'figure'),
     prevent_initial_call=True
 )
-def update_table(n, row, active_cell, slider_value, close_clicks, filenames):
+def update_table(n, row, active_cell, slider_value, close_clicks, filenames, current_job_table, current_fig):
     '''
     This callback updates the job table, loss plot, and results according to the job status in the compute service.
     Args:
@@ -542,6 +545,8 @@ def update_table(n, row, active_cell, slider_value, close_clicks, filenames):
         row:            Selected row (job)
         slider_value:   Image slider value (current image)
         filenames:      Selected data files
+        current_job_table:  Current job table
+        current_fig:        Current loss plot
     Returns:
         jobs-table:     Updates the job table
         show-plot:      Shows/hides the loss plot
@@ -601,6 +606,18 @@ def update_table(n, row, active_cell, slider_value, close_clicks, filenames):
                 if start > -1 and len(log) > start + 10:
                     fig = get_class_prob(log, start, filenames[slider_value])
                     style_fig = {'width': '100%', 'display': 'block'}
+    if current_fig:
+        try:
+            print('Change?')
+            if current_fig['data'][0]['y'] == list(fig['data'][0]['y']):
+                print('No')
+                fig = dash.no_update
+            else:
+                print('Yes')
+        except Exception as e:
+            print(e)
+    if data_table == current_job_table:
+        data_table = dash.no_update
     return data_table, fig, style_fig, val, style_text, is_open, log_display, None
 
 
