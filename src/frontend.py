@@ -187,6 +187,7 @@ CONTENT = [
                                           html.Output(id='label-output',
                                                       style={'height': '2rem', 'overflow': 'hidden',
                                                              'text-overflow': 'hidden'}),
+                                          dbc.Label(id='current-image-label'),
                                           dcc.Slider(id='img-slider',
                                                      min=0,
                                                      value=0,
@@ -634,6 +635,7 @@ def load_parameters(model_selection, action_selection, row):
 
 @app.callback(
     Output("img-output", "figure"),
+    Output("current-image-label", 'children'),
     Output("label-output", "children"),
     Output("img-slider", "max"),
     Output("img-slider", "value"),
@@ -670,6 +672,7 @@ def refresh_image(import_dir, confirm_import, img_ind, filenames, img_keyword, l
         content_style:      Content visibility
         warning-cause:      Cause that triggered warning pop-up
     '''
+    current_im_label=''
     changed_id = [p['prop_id'] for p in dash.callback_context.triggered][0]
     if len(filenames)>0 and not npz_modal:
         try:
@@ -679,27 +682,30 @@ def refresh_image(import_dir, confirm_import, img_ind, filenames, img_keyword, l
                     data_npy = np.squeeze(data_npz[img_keyword])
                     label_npy = np.squeeze(data_npz[label_keyword])
                     if len(data_npy) != len(label_npy):
-                        return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, 'different_size'
+                        return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, 'different_size'
                     slider_max = len(data_npy) - 1
                     if img_ind>slider_max:
                         img_ind = 0
                     fig = plot_figure(data_npy[img_ind])
+                    current_im_label = f"Image: {filenames[0]}"
                     label = f"Label: {label_npy[img_ind]}"
                 else:
-                    return dash.no_update, dash.no_update, dash.no_update, dash.no_update, {'display': 'None'}, dash.no_update
+                    return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, {'display': 'None'}, dash.no_update
             else:                                           # directory
                 slider_max = len(filenames)-1
                 if img_ind>slider_max:
                     img_ind = 0
                 image = Image.open(filenames[img_ind])
+                current_image_label = filenames[img_ind]
                 fig = plot_figure(image)
+                current_im_label = f"Image: {filenames[img_ind]}"
                 label = f"Label: {filenames[img_ind].split('/')[-2]}"  # determined by the last directory in the path
-            return fig, label, slider_max, img_ind, {'display': 'block'}, dash.no_update
+            return fig, current_im_label, label, slider_max, img_ind, {'display': 'block'}, dash.no_update
         except Exception as e:
             print(f'Exception in refresh_image callback {e}')
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, {'display': 'None'}, 'wrong_dataset'
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, {'display': 'None'}, 'wrong_dataset'
     else:
-        return dash.no_update, dash.no_update, dash.no_update, dash.no_update, {'display': 'None'}, dash.no_update
+        return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, {'display': 'None'}, dash.no_update
 
 
 @app.callback(
