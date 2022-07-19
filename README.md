@@ -1,22 +1,32 @@
 # mlex_mlcoach
 ## Description
-This app provides a training/testing platform for neural networks with [TensorFlow](https://www.tensorflow.org).
+This app provides a training/testing platform for image classification with supervised deep-learning approaches.
 
-## Running
+## Running as a standalone application
 First, let's install docker:
 
 * https://docs.docker.com/engine/install/
-* Next go into the mlex_mlcoach
+
+Next, let's setup its dependencies:
+* [mlex_computing_api](https://github.com/mlexchange/mlex_computing_api)
+* [mlex_content_registry](https://github.com/mlexchange/mlex_content_registry)
+
+Before moving to the next step, please make sure that the computing API and the content 
+registry are up and running. For more information, please refer to their respective 
+README files.
+* Next, cd into mlex_mlcoach
 * type `docker-compose up --build` into your terminal
 
-In a separate termina:
-
-* cd models
-* run `make build_docker`
-
-Next, open up the dash app:
-
+Finally, you can access MLCoach at:
 * Dash app: http://localhost:8062/
+
+Please refer to [HowToGuide](/docs/tasks.md#How To Guide) for further instructions on how
+to use this application.
+
+# Model Description
+**TF-NeuralNetworks:** Assortment of neural networks implemented in [TensorFlow](https://www.tensorflow.org).
+
+Further information can be found in [concepts](/docs/concepts.md).
 
 # Copyright
 MLExchange Copyright (c) 2021, The Regents of the University of California, through Lawrence Berkeley National Laboratory (subject to receipt of any required approvals from the U.S. Dept. of Energy). All rights reserved.
