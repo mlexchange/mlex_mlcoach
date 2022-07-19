@@ -815,7 +815,7 @@ def execute(execute, submit, children, num_cpus, num_gpus, action_selection, job
             directories = [data_path, str(in_path) + '/model.h5', str(out_path)]
         job = SimpleJob(service_type='backend',
                         working_directory='{}'.format(DATA_DIR),
-                        uri='mlexchange/tensorflow-neural-networks',
+                        uri='mlexchange1/tensorflow-neural-networks',
                         cmd=' '.join([command] + directories + ['\'' + json.dumps(input_params) + '\'']),
                         kwargs={'job_type': f'{action_selection} {count}',
                                 'experiment_id': experiment_id,
