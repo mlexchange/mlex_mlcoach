@@ -501,7 +501,7 @@ def file_manager(browse_format, browse_n_clicks, import_n_clicks, delete_n_click
     
     if changed_id == 'refresh-data.n_clicks':
         list_filename, selected_files = [], []
-        datapath = requests.get(f'http://labelmaker-api:8005/api/v0/import/datapath').json()
+        datapath = requests.get(f'http://labelmaker-api:8005/api/v0/export/datapath').json()
         if bool(datapath['datapath']) and os.path.isdir(datapath['datapath'][0]['file_path']):
             list_filename, selected_files = datapath['filenames'], datapath['datapath'][0]['file_path']
         return files,  list_filename, selected_files
