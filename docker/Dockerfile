@@ -19,7 +19,8 @@ EXPOSE 8000
 
 WORKDIR /app/work
 ENV HOME /app/work
-#COPY src src
+COPY src src
 ENV PYTHONUNBUFFERED=1
 
 CMD ["bash"]
+CMD python3 src/frontend.py
