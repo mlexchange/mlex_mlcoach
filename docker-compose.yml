@@ -7,12 +7,10 @@ services:
     build:
       context: "."
       dockerfile: "docker/Dockerfile"
-    command: "python src/frontend.py"
     environment:
       DATA_DIR: "${PWD}/data/"
     volumes:
       - ./data:/app/work/data
-      - ./src:/app/work/src
     ports:
       - "8062:8062"
     networks:
