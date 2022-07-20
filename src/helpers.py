@@ -69,8 +69,8 @@ def get_class_prob(log, start, filename):
     if end == -1:
         end = len(log)
     log = log[start:end]
-    df = pd.read_csv(StringIO(log.replace('\n\n', '\n')), sep=' ')
     try:
+        df = pd.read_csv(StringIO(log.replace('\n\n', '\n')), sep=' ')
         res = df.loc[df['filename'] == filename]    # search results for the selected file
         fig = px.bar(res.iloc[: , 1:])
         fig.update_layout(yaxis_title="probability")

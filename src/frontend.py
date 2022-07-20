@@ -603,7 +603,7 @@ def update_table(n, row, active_cell, slider_value, close_clicks, filenames, cur
                 style_text = {'width': '100%', 'display': 'block'}
             if data_table[row[0]]['job_type'].split(' ')[0] == 'prediction_model':
                 start = log.find('filename')
-                if start > -1 and len(log) > start + 10:
+                if start > -1 and len(log) > start + 10 and len(filenames)>slider_value:
                     fig = get_class_prob(log, start, filenames[slider_value])
                     style_fig = {'width': '100%', 'display': 'block'}
     if current_fig:
