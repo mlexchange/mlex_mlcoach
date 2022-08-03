@@ -24,7 +24,7 @@ from file_manager import filename_list, move_a_file, move_dir, add_paths_from_di
                          file_explorer, DOCKER_DATA, DOCKER_HOME, LOCAL_HOME, UPLOAD_FOLDER_ROOT
 from helpers import SimpleJob
 from helpers import get_job, generate_figure, get_class_prob, model_list_GET_call, plot_figure, get_gui_components,\
-    init_counter
+    get_counter
 from kwarg_editor import JSONParameterEditor
 import templates
 
@@ -172,7 +172,8 @@ SIDEBAR = [
         is_open=False,
     ),
     dcc.Store(id='warning-cause', data=''),
-    dcc.Store(id='counter', data=init_counter(USER))
+    dcc.Store(id='warning-cause-execute', data=''),
+    dcc.Store(id='counter', data=get_counter(USER))
 ]
 
 # App contents (right hand side)
@@ -199,7 +200,7 @@ CONTENT = [
                                                      style={'width': '100%', 'justify-content': 'center'})
                                           ],
                               style={'display': 'none'}),
-                      ], style={'height': '32rem'})
+                      ], style={'height': '34rem'})
                       ]),
             width=5),
         dbc.Col(dbc.Card(
@@ -217,7 +218,7 @@ CONTENT = [
                                                           style={'display': 'None'}),
                                                dcc.Download(id='download-out')
                                                ],
-                                   style={'height': '32rem'})]),
+                                   style={'height': '34rem'})]),
             width=7)]),
         dcc.Interval(id='interval', interval=5 * 1000, n_intervals=0)
     ]),
@@ -267,12 +268,13 @@ def toggle_collapse(collapse_button, import_button, is_open):
     Output("warning-msg", "children"),
 
     Input("warning-cause", "data"),
+    Input("warning-cause-execute", "data"),
     Input("ok-button", "n_clicks"),
 
     State("warning-modal", "is_open"),
     prevent_initial_call=True
 )
-def toggle_warning_modal(warning_cause, ok_n_clicks, is_open):
+def toggle_warning_modal(warning_cause, warning_cause_exec, ok_n_clicks, is_open):
     '''
     This callback toggles a warning/error message
     Args:
@@ -280,15 +282,20 @@ def toggle_warning_modal(warning_cause, ok_n_clicks, is_open):
         ok_n_clicks:        Close the warning
         is_open:            Close/open state of the warning
     '''
-    if ok_n_clicks:
-        return not is_open, ""
+    changed_id = dash.callback_context.triggered[0]['prop_id']
+    if 'ok-button.n_clicks' in changed_id:
+        return False, ""
     if warning_cause == 'wrong_dataset':
         return not is_open, "The dataset you have selected is not supported. Please select (1) a data directory " \
                         "where each subfolder corresponds to a given category, OR (2) an NPZ file."
     if warning_cause == 'different_size':
         return not is_open, "The number of images and labels do not match. Please select a different dataset."
+    if warning_cause_exec == 'no_row_selected':
+        return not is_open, "Please select a trained model from the List of Jobs."
+    if warning_cause_exec == 'no_dataset':
+        return not is_open, "Please upload the dataset before submitting the job."
     else:
-        return not is_open, ""
+        return False, ""
 
 
 @app.callback(
@@ -608,12 +615,8 @@ def update_table(n, row, active_cell, slider_value, close_clicks, filenames, cur
                     style_fig = {'width': '100%', 'display': 'block'}
     if current_fig:
         try:
-            print('Change?')
             if current_fig['data'][0]['y'] == list(fig['data'][0]['y']):
-                print('No')
                 fig = dash.no_update
-            else:
-                print('Yes')
         except Exception as e:
             print(e)
     if data_table == current_job_table:
@@ -728,6 +731,7 @@ def refresh_image(import_dir, confirm_import, img_ind, filenames, img_keyword, l
 @app.callback(
     Output("resources-setup", "is_open"),
     Output("counter", "data"),
+    Output("warning-cause-execute", "data"),
 
     Input("execute", "n_clicks"),
     Input("submit", "n_clicks"),
@@ -767,8 +771,16 @@ def execute(execute, submit, children, num_cpus, num_gpus, action_selection, job
     '''
     changed_id = [p['prop_id'] for p in dash.callback_context.triggered][0]
     if 'execute.n_clicks' in changed_id:
-        return True, counters
+        if len(filenames) == 0:
+            return False, counters, 'no_dataset'
+        if action_selection != 'train_model' and not row:
+            return False, counters, 'no_row_selected'
+        if row:
+            if action_selection != 'train_model' and job_data[row[0]]['job_type'].split(' ')[0] != 'train_model':
+                return False, counters, 'no_row_selected'
+        return True, counters, ''
     if 'submit.n_clicks' in changed_id:
+        counters = get_counter(USER)
         experiment_id = str(uuid.uuid4())
         out_path = pathlib.Path('/app/work/data/mlexchange_store/{}/{}'.format(USER, experiment_id))
         out_path.mkdir(parents=True, exist_ok=True)
@@ -823,8 +835,8 @@ def execute(execute, submit, children, num_cpus, num_gpus, action_selection, job
                                 'params': input_params,
                                 **kwargs})
         job.submit(USER, num_cpus, num_gpus)
-        return False, counters
-    return False, counters
+        return False, counters, ''
+    return False, counters, ''
 
 
 @app.callback(

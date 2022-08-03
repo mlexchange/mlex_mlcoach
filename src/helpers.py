@@ -72,6 +72,8 @@ def get_class_prob(log, start, filename):
     try:
         df = pd.read_csv(StringIO(log.replace('\n\n', '\n')), sep=' ')
         res = df.loc[df['filename'] == filename]    # search results for the selected file
+        if res.shape[0]>1:
+            res = res.iloc[[0]]
         fig = px.bar(res.iloc[: , 1:])
         fig.update_layout(yaxis_title="probability")
         fig.update_xaxes(showgrid=False,
@@ -167,7 +169,7 @@ def get_gui_components(model_uid, comp_group):
     return response.json()
 
 
-def init_counter(username):
+def get_counter(username):
     job_list = get_job(username, 'mlcoach')
     job_types = ['train_model', 'evaluate_model', 'prediction_model', 'transfer_learning']
     counters = [-1, -1, -1, -1]
