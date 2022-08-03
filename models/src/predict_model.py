@@ -26,11 +26,13 @@ if __name__ == '__main__':
     out_dir = args.out_dir
     data_parameters = DataAugmentationParams(**json.loads(args.parameters))
 
-    (test_generator, tmp) = data_processing(data_parameters, test_dir)
+    (test_generator, tmp) = data_processing(data_parameters, test_dir, True)
     try:
-        test_filenames = test_generator.filenames
-        test_filenames = [test_dir + '/' +  i for i in test_filenames]
-        classes = [subdir for subdir in sorted(os.listdir(test_dir)) if os.path.isdir(os.path.join(test_dir, subdir))]
+        test_filenames = test_generator.file_paths
+        class_dir = os.path.split(model_dir)[0]
+        classes = pd.read_csv(class_dir+'/'+'classes.csv')
+        classes = classes.values.tolist()
+        classes = [x for xs in classes for x in xs]
     except Exception as e:
         test_filenames = list(range(len(test_generator.__dict__['x'])))     # list of indexes
         test_filenames = [str(x) for x in test_filenames] 

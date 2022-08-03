@@ -1,5 +1,5 @@
 TAG 			:= latest	
-USER 			:= mlexchange
+USER 			:= mlexchange1
 PROJECT			:= tensorflow-neural-networks
 DATA_PATH               := /data/tanchavez/Datasets/born
 DATA_PATH_NPZ           := /data/tanchavez/Datasets
