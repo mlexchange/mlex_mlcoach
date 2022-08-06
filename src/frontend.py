@@ -53,7 +53,12 @@ RESOURCES_SETUP = html.Div(
                                 dbc.Label('Number of GPUs'),
                                 dbc.Input(id='num-gpus',
                                           type="int",
-                                          value=0)])
+                                          value=0)]),
+                        dbc.FormGroup([
+                            dbc.Label('Model Name'),
+                            dbc.Input(id='model-name',
+                                      type="str",
+                                      value="")])
                     ]),
                 dbc.ModalFooter(
                     dbc.Button(
@@ -75,11 +80,18 @@ JOB_STATUS = dbc.Card(
             dbc.CardHeader("List of Jobs"),
             dbc.CardBody(
                 children=[
+                    dbc.Row(
+                        [
+                            dbc.Button("Deselect Row", id="deselect-row", style={'margin-left': '1rem'}),
+                            dbc.Button("Delete Job", id="delete-row", color='danger'),
+                        ]
+                    ),
                     dash_table.DataTable(
                         id='jobs-table',
                         columns=[
                             {'name': 'Job ID', 'id': 'job_id'},
                             {'name': 'Type', 'id': 'job_type'},
+                            {'name': 'Name', 'id': 'name'},
                             {'name': 'Status', 'id': 'status'},
                             {'name': 'Parameters', 'id': 'parameters'},
                             {'name': 'Experiment ID', 'id': 'experiment_id'},
@@ -108,6 +120,21 @@ JOB_STATUS = dbc.Card(
                     )
                 ],
             ),
+        dbc.Modal(
+            [
+                dbc.ModalHeader("Warning"),
+                dbc.ModalBody('Models cannot be recovered after deletion.  \
+                                Do you still want to proceed?"'),
+                dbc.ModalFooter([
+                    dbc.Button(
+                        "OK", id="confirm-delete-row", color='danger', outline=False,
+                        className="ms-auto", n_clicks=0
+                    ),
+                ]),
+            ],
+            id="delete-modal",
+            is_open=False,
+        ),
         dbc.Modal([
             dbc.ModalHeader("Job Logs"),
             dbc.ModalBody(id='log-display'),
@@ -116,7 +143,7 @@ JOB_STATUS = dbc.Card(
             id='log-modal',
             size='xl')
     ]
-    )
+)
 
 # Sidebar with actions, model, and parameters selection
 SIDEBAR = [
@@ -147,7 +174,12 @@ SIDEBAR = [
                 dbc.FormGroup([
                     dbc.Label('Data'),
                     file_explorer,
-                ])
+                ]),
+                dbc.Button('Execute',
+                           id='execute',
+                           n_clicks=0,
+                           className='m-1',
+                           style={'width': '100%', 'justify-content': 'center'})
             ])
         ]
     ),
@@ -192,12 +224,7 @@ CONTENT = [
                                           dcc.Slider(id='img-slider',
                                                      min=0,
                                                      value=0,
-                                                     tooltip={'always_visible': True, 'placement': 'bottom'}),
-                                          dbc.Button('Execute',
-                                                     id='execute',
-                                                     n_clicks=0,
-                                                     className='m-1',
-                                                     style={'width': '100%', 'justify-content': 'center'})
+                                                     tooltip={'always_visible': True, 'placement': 'bottom'})
                                           ],
                               style={'display': 'none'}),
                       ], style={'height': '34rem'})
@@ -452,9 +479,10 @@ def file_manager(browse_format, browse_n_clicks, import_n_clicks, delete_n_click
     changed_id = dash.callback_context.triggered[0]['prop_id']
     # if a previous job is selected, it's data is automatically plotted
     if 'jobs-table.selected_rows' in changed_id and job_rows is not None:
-        if job_data[job_rows[0]]["job_type"].split()[-1] != 'train_model':
-            filenames = add_paths_from_dir(job_data[job_rows[0]]["dataset"], ['tiff', 'tif', 'jpg', 'jpeg', 'png'], [])
-            return dash.no_update, filenames, dash.no_update
+        if len(job_rows)>0:
+            if job_data[job_rows[0]]["job_type"].split()[-1] != 'train_model':
+                filenames = add_paths_from_dir(job_data[job_rows[0]]["dataset"], ['tiff', 'tif', 'jpg', 'jpeg', 'png'], [])
+                return dash.no_update, filenames, dash.no_update
 
     supported_formats = []
     import_format = import_format.split(',')
@@ -574,6 +602,7 @@ def update_table(n, row, active_cell, slider_value, close_clicks, filenames, cur
                               dict(
                                   job_id=job['uid'],
                                   job_type=job['job_kwargs']['kwargs']['job_type'],
+                                  name=job['description'],
                                   status=job['status']['state'],
                                   parameters=params,
                                   experiment_id=job['job_kwargs']['kwargs']['experiment_id'],
@@ -598,21 +627,22 @@ def update_table(n, row, active_cell, slider_value, close_clicks, filenames, cur
     val = ''
     fig = go.Figure(go.Scatter(x=[], y=[]))
     if row:
-        log = data_table[row[0]]["job_logs"]
-        if log:
-            if data_table[row[0]]['job_type'].split(' ')[0] == 'train_model':
-                start = log.find('epoch')
-                if start > -1 and len(log) > start + 5:
-                    fig = generate_figure(log, start)
-                    style_fig = {'width': '100%', 'display': 'block'}
-            if data_table[row[0]]['job_type'].split(' ')[0] == 'evaluate_model':
-                val = log
-                style_text = {'width': '100%', 'display': 'block'}
-            if data_table[row[0]]['job_type'].split(' ')[0] == 'prediction_model':
-                start = log.find('filename')
-                if start > -1 and len(log) > start + 10 and len(filenames)>slider_value:
-                    fig = get_class_prob(log, start, filenames[slider_value])
-                    style_fig = {'width': '100%', 'display': 'block'}
+        if row[0] < len(data_table):
+            log = data_table[row[0]]["job_logs"]
+            if log:
+                if data_table[row[0]]['job_type'].split(' ')[0] == 'train_model':
+                    start = log.find('epoch')
+                    if start > -1 and len(log) > start + 5:
+                        fig = generate_figure(log, start)
+                        style_fig = {'width': '100%', 'display': 'block'}
+                if data_table[row[0]]['job_type'].split(' ')[0] == 'evaluate_model':
+                    val = log
+                    style_text = {'width': '100%', 'display': 'block'}
+                if data_table[row[0]]['job_type'].split(' ')[0] == 'prediction_model':
+                    start = log.find('filename')
+                    if start > -1 and len(log) > start + 10 and len(filenames)>slider_value:
+                        fig = get_class_prob(log, start, filenames[slider_value])
+                        style_fig = {'width': '100%', 'display': 'block'}
     if current_fig:
         try:
             if current_fig['data'][0]['y'] == list(fig['data'][0]['y']):
@@ -622,6 +652,39 @@ def update_table(n, row, active_cell, slider_value, close_clicks, filenames, cur
     if data_table == current_job_table:
         data_table = dash.no_update
     return data_table, fig, style_fig, val, style_text, is_open, log_display, None
+
+
+@app.callback(
+    Output('jobs-table', 'selected_rows'),
+    Input('deselect-row', 'n_clicks'),
+    prevent_initial_call=True
+)
+def deselect_row(n_click):
+    '''
+    This callback deselects the row in the data table
+    '''
+    return []
+
+
+@app.callback(
+    Output('delete-modal', 'is_open'),
+    Input('confirm-delete-row', 'n_clicks'),
+    Input('delete-row', 'n_clicks'),
+    State('jobs-table', 'selected_rows'),
+    State('jobs-table', 'data'),
+    prevent_initial_call=True
+)
+def delete_row(confirm_delete, delete, row, job_data):
+    '''
+    This callback deletes the selected model in the table
+    '''
+    changed_id = [p['prop_id'] for p in dash.callback_context.triggered][0]
+    if 'delete-row.n_clicks' == changed_id:
+        return True
+    else:
+        job_uid = job_data[row[0]]['job_id']
+        requests.delete(f'http://job-service:8080/api/v0/jobs/{job_uid}/delete')
+        return False
 
 
 @app.callback(
@@ -747,9 +810,10 @@ def refresh_image(import_dir, confirm_import, img_ind, filenames, img_keyword, l
     State("counter", "data"),
     State("npz-img-key", "value"),
     State("npz-label-key", "value"),
+    State("model-name", "value"),
     prevent_intial_call=True)
 def execute(execute, submit, children, num_cpus, num_gpus, action_selection, job_data, row, data_path, filenames,
-            counters, x_key, y_key):
+            counters, x_key, y_key, model_name):
     '''
     This callback submits a job request to the compute service according to the selected action & model
     Args:
@@ -825,7 +889,10 @@ def execute(execute, submit, children, num_cpus, num_gpus, action_selection, job
             count = counters[3]
             command = "python3 src/transfer_learning.py"
             directories = [data_path, str(in_path) + '/model.h5', str(out_path)]
+        if len(model_name)==0:      # if model_name was not defined
+            model_name = f'{action_selection} {count}'
         job = SimpleJob(service_type='backend',
+                        description=model_name,
                         working_directory='{}'.format(DATA_DIR),
                         uri='mlexchange1/tensorflow-neural-networks',
                         cmd=' '.join([command] + directories + ['\'' + json.dumps(input_params) + '\'']),
