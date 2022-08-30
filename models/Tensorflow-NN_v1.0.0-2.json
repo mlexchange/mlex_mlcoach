@@ -149,7 +149,7 @@
       "param_key": "epochs",
       "min": 1,
       "max": 1000,
-      "value": 3,
+      "value": 30,
       "comp_group": "train_model"
     },
     {
@@ -157,9 +157,8 @@
       "name": "nn_model",
       "title": "ML Model",
       "param_key": "nn_model",
-      "value": "Xception",
+      "value": "ResNet50",
       "options": [
-        {"label": "Xception", "value": "Xception"},
         {"label": "VGG16", "value": "VGG16"},
         {"label": "VGG19", "value": "VGG19"},
         {"label": "ResNet101", "value": "ResNet101"},
@@ -167,10 +166,8 @@
         {"label": "ResNet50V2", "value": "ResNet50V2"},
         {"label": "ResNet50", "value": "ResNet50"},
         {"label": "ResNet152V2", "value": "ResNet152V2"},
-        {"label": "InceptionV3", "value": "InceptionV3"},
         {"label": "DenseNet201", "value": "DenseNet201"},
         {"label": "NASNetLarge", "value": "NASNetLarge"},
-        {"label": "InceptionResNetV2", "value": "InceptionResNetV2"},
         {"label": "DenseNet169", "value": "DenseNet169"}
       ],
       "comp_group": "train_model"
@@ -275,7 +272,7 @@
       "name": "shuffle",
       "title": "Shuffle Data",
       "param_key": "shuffle",
-      "value": true,
+      "value": false,
       "options": [
         {
           "label": "True",

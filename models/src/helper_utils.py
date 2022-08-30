@@ -63,7 +63,7 @@ COLOR_MODE = 'rgb'          # fixed due to TF models
 
 
 # Data Augmentation + Batch Size
-def data_processing(parameters, data_dir):
+def data_processing(parameters, data_dir, no_label=False):
     rotation_angle = parameters.rotation_angle
     image_flip = parameters.image_flip
     if image_flip=='None':
@@ -79,12 +79,8 @@ def data_processing(parameters, data_dir):
         horizontal_flip = True
         vertical_flip = True
     batch_size = parameters.batch_size
-    if parameters.target_width and parameters.target_height:
-        target_width = parameters.target_width
-        target_height = parameters.target_height
-    else:
-        target_width = 224
-        target_height = 224
+    target_width = 224
+    target_height = 224
     if parameters.shuffle:
        shuffle = parameters.shuffle
     else:
@@ -108,7 +104,14 @@ def data_processing(parameters, data_dir):
     if len(first_data) > 0:
         data_type = os.path.splitext(first_data[0])[-1]
         if data_type in ['.tiff', '.tif', '.jpg', '.jpeg', '.png']:
-            if parameters.val_pct:
+            if no_label:
+                train_generator = tf.keras.preprocessing.image_dataset_from_directory(data_dir,
+                                                                                     label_mode=None, 
+                                                                                     image_size=(target_width, target_height), 
+                                                                                     batch_size=batch_size,
+                                                                                     shuffle=False)
+                valid_generator = []
+            elif parameters.val_pct:
                 train_generator = datagen.flow_from_directory(data_dir,
                                                               target_size=(target_width, target_height),
                                                               color_mode=COLOR_MODE,

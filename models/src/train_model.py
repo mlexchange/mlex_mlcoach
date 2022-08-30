@@ -3,6 +3,7 @@ import json
 import os
 
 import numpy as np
+import pandas as pd
 import tensorflow as tf
 
 from model_validation import TrainingParams, DataAugmentationParams
@@ -62,4 +63,6 @@ if __name__ == '__main__':
 
     # save model
     model.save(out_dir+'/model.h5')
+    df_classes = pd.DataFrame(classes)
+    df_classes.to_csv(out_dir + '/classes.csv', index=False)
     print("Saved to disk")

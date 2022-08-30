@@ -20,7 +20,7 @@ README files.
 Finally, you can access MLCoach at:
 * Dash app: http://localhost:8062/
 
-Please refer to [HowToGuide](/docs/tasks.md#How To Guide) for further instructions on how
+Please refer to [HowToGuide](/docs/tasks.md) for further instructions on how
 to use this application.
 
 # Model Description
