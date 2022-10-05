@@ -18,9 +18,12 @@ LOCAL_HOME = str(LOCAL_DATA)
 UPLOAD_FOLDER_ROOT = DOCKER_DATA / 'upload'
 DATAPATH_DEFAULT, FILENAMES_DEFAULT = [], []
 DATAPATH = requests.get(f'http://labelmaker-api:8005/api/v0/export/datapath').json()
-if bool(DATAPATH['datapath']) and os.path.isdir(DATAPATH['datapath'][0]['file_path']):
-    DATAPATH_DEFAULT = DATAPATH['datapath'][0]['file_path']
-    FILENAMES_DEFAULT = DATAPATH['filenames']
+if bool(DATAPATH['datapath']):
+    if DATAPATH['datapath'][0]['where'] != 'splash':
+        if DATAPATH['datapath'][0]['file_path']:
+            if os.path.isdir(DATAPATH['datapath'][0]['file_path'][0]):
+                DATAPATH_DEFAULT = DATAPATH['datapath'][0]['file_path'][0]
+                FILENAMES_DEFAULT = DATAPATH['filenames']
 
 # FILES DISPLAY
 file_paths_table = html.Div(
@@ -114,7 +117,7 @@ data_access = html.Div([
                                                     {'label': '.csv', 'value': '*.csv'},
                                                     {'label': '.npz', 'value': '*.npz'},
                                                 ],
-                                                value='*')
+                                                value='dir')
                                             ],
                                             style={"width": "15%", 'margin-right': '60px'}
                                     ),

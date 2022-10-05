@@ -11,6 +11,9 @@ from plotly.subplots import make_subplots
 import requests
 
 
+SPLASH_CLIENT = 'http://splash:80/api/v0'
+
+
 class SimpleJob:
     def __init__(self,
                  service_type,
@@ -46,7 +49,6 @@ class SimpleJob:
                     'requirements': {'num_processors': num_cpus,
                                      'num_gpus': num_gpus,
                                      'num_nodes': 1}}
-        print(workflow)
         url = 'http://job-service:8080/api/v0/workflows'
         return requests.post(url, json=workflow).status_code
 
@@ -121,6 +123,7 @@ def plot_figure(image):
     fig.update_traces(dict(showscale=False, coloraxis=None))
     return fig
 
+
 # saves model as an .h5 file on local disk
 def save_model(model, save_path='my_model.h5'):
     # save model
@@ -179,9 +182,34 @@ def get_counter(username):
         for indx, job_type in enumerate(job_types):
             for job in reversed(job_list):
                 last_job = job['job_kwargs']['kwargs']['job_type']
-                job_name = job['description'].split()
+                if job['description']:
+                    job_name = job['description'].split()
+                else:
+                    job_name = job['job_kwargs']['kwargs']['job_type'].split()
                 if last_job == job_type and job_name[0] == job_type and len(job_name)==2 and job_name[-1].isdigit():
                     value = int(job_name[-1])
                     counters[indx] = value
                     break
     return counters
+
+
+def load_from_splash(filename):
+    '''
+    This function queries labels from splash-ml.
+    Args:
+        filename:       URI of dataset (e.g. filename)
+    Returns:
+        label:          Label assigned to the filename
+    '''
+    url = f'{SPLASH_CLIENT}/datasets?'
+    try:
+        params = {'uris': [filename]}
+        datasets = requests.get(url, params=params).json()
+    except Exception as e:
+        print(f'Loading from splash exception: {e}')
+        datasets = []
+    for tag in datasets[0]['tags']:
+        if tag['name'] == 'labelmaker':
+            label = tag['locator']['path']
+            break       # just one tag at this time
+    return label
