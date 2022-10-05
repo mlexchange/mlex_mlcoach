@@ -25,33 +25,30 @@ if __name__ == '__main__':
     train_parameters = TrainingParams(**json.loads(args.parameters))
     data_parameters = DataAugmentationParams(**json.loads(args.parameters))
     print(tf.test.gpu_device_name())
-    (train_generator, valid_generator) = data_processing(data_parameters, train_dir)
+    (train_generator, valid_generator), classes = data_processing(data_parameters, train_dir)
     try:
         train_filenames = train_generator.filenames
-        classes = [subdir for subdir in sorted(os.listdir(train_dir)) if os.path.isdir(os.path.join(train_dir, subdir))]
     except Exception as e:
         train_filenames = list(range(len(train_generator.__dict__['x'])))     # list of indexes
-        classes = np.unique(train_generator.__dict__['y'], axis=0)            # list of classes
     class_num = len(classes)
 
-    pooling = train_parameters.pooling
+    weights = train_parameters.weights
     epochs = train_parameters.epochs
     nn_model = train_parameters.nn_model
     optimizer = train_parameters.optimizer.value
     learning_rate = train_parameters.learning_rate
     loss_func = train_parameters.loss_function.value
 
-    opt_code = compile("tf.keras.optimizers." + optimizer + "(learning_rate=" + str(learning_rate) + ")", "<string>", "eval")
-    model_code = compile("tf.keras.applications." + nn_model +
-                         "(include_top=True, weights=None, input_tensor=None," + "pooling=" + pooling +
-                         ", classes= class_num)", "<string>", "eval")
+    opt_code = compile(f'tf.keras.optimizers.{optimizer}(learning_rate={learning_rate})', '<string>', 'eval')
+    model_code = compile(f'tf.keras.applications.{nn_model}(include_top=True, weights={weights}, input_tensor=None, classes= class_num)',
+                          '<string>', 'eval')
     model = eval(model_code)
     model.compile(optimizer=eval(opt_code),         # default adam
                   loss=loss_func,                   # default categorical_crossentropy
                   metrics=['accuracy'])
-    model.summary()
-    # tf.keras.utils.plot_model(model, out_dir+'/model_layout.png', show_shapes=True)     # plot NN
-    print('Length:', len(model.layers), 'layers')                                       # number of layers
+    # model.summary()
+    # tf.keras.utils.plot_model(model, out_dir+'/model_layout.png', show_shapes=True)       # plot NN
+    print('Length:', len(model.layers), 'layers')                                           # number of layers
 
     # fit model while also keeping track of data for dash plots.
     model.fit(train_generator,

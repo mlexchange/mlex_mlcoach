@@ -1,12 +1,6 @@
 from enum import Enum
 from pydantic import BaseModel, Field
-from typing import Optional
-
-
-class Pooling(str, Enum):
-    none = 'None'
-    maximum = 'Maximum'
-    average = 'Average'
+from typing import Optional, List
 
 
 class NNModel(str, Enum):
@@ -34,6 +28,11 @@ class Optimizer(str, Enum):
     Nadam = "Nadam"
     RMSprop = "RMSprop"
     SGD = "SGD"
+
+
+class Weights(str, Enum):
+    none = 'None'
+    imagenet = 'imagenet'
 
 
 class LossFunction(str, Enum):
@@ -73,10 +72,11 @@ class DataAugmentationParams(BaseModel):
     x_key: Optional[str] = Field(description='keyword for x data in NPZ')
     y_key: Optional[str] = Field(description='keyword for y data in NPZ')
     seed: Optional[int] = Field(description='random seed')
+    splash: Optional[List[str]] = Field(description='List of URIs in splash-ml')
 
 
 class TrainingParams(DataAugmentationParams):
-    pooling: Pooling
+    weights: Weights
     optimizer: Optimizer
     loss_function: LossFunction
     learning_rate: float = Field(description='learning rate')

@@ -26,17 +26,18 @@ if __name__ == '__main__':
     out_dir = args.out_dir
     data_parameters = DataAugmentationParams(**json.loads(args.parameters))
 
-    (test_generator, tmp) = data_processing(data_parameters, test_dir, True)
+    (test_generator, tmp), tmp_class = data_processing(data_parameters, test_dir, True)
+    test_dir = '/'.join(test_dir.split('/')[0:-1])
     try:
-        test_filenames = test_generator.file_paths
+        test_filenames = [f'{test_dir}/{x}' for x in test_generator.filenames]
         class_dir = os.path.split(model_dir)[0]
         classes = pd.read_csv(class_dir+'/'+'classes.csv')
         classes = classes.values.tolist()
         classes = [x for xs in classes for x in xs]
     except Exception as e:
         test_filenames = list(range(len(test_generator.__dict__['x'])))     # list of indexes
-        test_filenames = [str(x) for x in test_filenames] 
-        classes = np.unique(test_generator.__dict__['y'], axis=0)          # list of classes
+        test_filenames = [f'{test_dir}/{x}' for x in test_filenames]        # full docker path filenames
+        classes = np.unique(test_generator.__dict__['y'], axis=0)           # list of classes
         classes = [str(x) for x in classes]
 
     df_files = pd.DataFrame(test_filenames, columns=['filename'])
@@ -46,4 +47,4 @@ if __name__ == '__main__':
                                 callbacks=[TestCustomCallback(test_filenames, classes)])
     df_prob = pd.DataFrame(prob, columns=classes)
     df_results = pd.concat([df_files,df_prob], axis=1)
-    df_results.to_csv(out_dir + '/results.csv', index=False)
+    df_results.to_pickle(out_dir + '/results.pkl')
