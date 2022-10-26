@@ -8,10 +8,11 @@ import tensorflow as tf
 
 from model_validation import TrainingParams, DataAugmentationParams
 from helper_utils import TrainCustomCallback, data_processing
-
+#from keras.layers import VersionAwareLayers
+import tensorflow.keras.layers as layers
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-
+#layers = VersionAwareLayers()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -40,13 +41,26 @@ if __name__ == '__main__':
     loss_func = train_parameters.loss_function.value
 
     opt_code = compile(f'tf.keras.optimizers.{optimizer}(learning_rate={learning_rate})', '<string>', 'eval')
-    model_code = compile(f'tf.keras.applications.{nn_model}(include_top=True, weights={weights}, input_tensor=None, classes= class_num)',
-                          '<string>', 'eval')
-    model = eval(model_code)
+    print(f'weights: {weights}')
+    if weights != 'None':
+        model_code = compile(f"tf.keras.applications.{nn_model}(include_top=False, input_shape=(224,224,3), weights='imagenet', input_tensor=None)",
+                          "<string>", 'eval')
+        base_model = eval(model_code)
+
+        x = base_model.output
+        x = layers.Flatten(name="flatten")(x)
+        x = layers.Dense(4096, activation="relu", name="fc1")(x)
+        x = layers.Dense(4096, activation="relu", name="fc2")(x)
+        predictions = layers.Dense(class_num, activation='softmax', name="predictions")(x)
+        model = tf.keras.models.Model(inputs=base_model.input, outputs=predictions)
+    else:
+        model_code = compile(f"tf.keras.applications.{nn_model}(include_top=True, weights=None, input_tensor=None, classes={class_num})",
+                          "<string>", 'eval')
+        model = eval(model_code)
     model.compile(optimizer=eval(opt_code),         # default adam
                   loss=loss_func,                   # default categorical_crossentropy
                   metrics=['accuracy'])
-    # model.summary()
+    model.summary()
     # tf.keras.utils.plot_model(model, out_dir+'/model_layout.png', show_shapes=True)       # plot NN
     print('Length:', len(model.layers), 'layers')                                           # number of layers
 
