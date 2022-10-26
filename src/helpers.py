@@ -74,8 +74,11 @@ def get_class_prob(log, start, filename):
         end = len(log)
     log = log[start:end]
     try:
+        #print(log)
         df = pd.read_csv(StringIO(log.replace('\n\n', '\n')), sep=' ')
+        #print(df)
         res = df.loc[df['filename'] == filename]    # search results for the selected file
+        #print(res)
         if res.shape[0]>1:
             res = res.iloc[[0]]
         fig = px.bar(res.iloc[: , 1:])
@@ -85,6 +88,7 @@ def get_class_prob(log, start, filename):
                          zeroline=False)
         return fig #res.to_string(index=False)
     except Exception as err:
+        print(err)
         return go.Figure(go.Scatter(x=[], y=[]))
 
 
@@ -120,7 +124,10 @@ def plot_figure(image):
                      showticklabels=False,
                      zeroline=False)
     fig.update_layout(margin=dict(l=0, r=0, t=0, b=10))
-    fig.update_traces(dict(showscale=False, coloraxis=None))
+    try:
+        fig.update_traces(dict(showscale=False, coloraxis=None))
+    except Exception as e:
+        print(e)
     return fig
 
 
@@ -213,3 +220,11 @@ def load_from_splash(filename):
             label = tag['locator']['path']
             break       # just one tag at this time
     return label
+
+
+def get_host(host_nickname):
+    hosts = requests.get(f'http://job-service:8080/api/v0/hosts?&nickname={host_nickname}').json()
+    max_processors = hosts[0]['backend_constraints']['num_processors']
+    max_gpus = hosts[0]['backend_constraints']['num_gpus']
+    return max_processors, max_gpus
+

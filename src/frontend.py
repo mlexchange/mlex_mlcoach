@@ -25,7 +25,7 @@ from file_manager import filename_list, move_a_file, move_dir, add_paths_from_di
                          file_explorer, DOCKER_DATA, DOCKER_HOME, LOCAL_HOME, UPLOAD_FOLDER_ROOT
 from helpers import SimpleJob
 from helpers import get_job, generate_figure, get_class_prob, model_list_GET_call, plot_figure, get_gui_components,\
-                    get_counter, load_from_splash
+                    get_counter, load_from_splash, get_host
 from kwarg_editor import JSONParameterEditor
 import templates
 
@@ -36,25 +36,27 @@ app = dash.Dash(__name__, external_stylesheets=external_stylesheets, suppress_ca
 DATA_DIR = str(os.environ['DATA_DIR'])
 USER = 'admin'
 MODELS = model_list_GET_call()
+HOST_NICKNAME = str(os.environ['HOST_NICKNAME'])
+num_processors, num_gpus = get_host(HOST_NICKNAME)
 
 
 RESOURCES_SETUP = html.Div(
     [
         dbc.Modal(
             [
-                dbc.ModalHeader("Resources Setup"),
+                dbc.ModalHeader("Choose number of computing resources:"),
                 dbc.ModalBody(
                     children=[
                         dbc.FormGroup([
-                                dbc.Label('Number of CPUs'),
+                                dbc.Label(f'Number of CPUs (Maximum available: {num_processors})'),
                                 dbc.Input(id='num-cpus',
                                           type="int",
-                                          value=1)]),
+                                          value=2)]),
                         dbc.FormGroup([
-                                dbc.Label('Number of GPUs'),
+                                dbc.Label(f'Number of GPUs (Maximum available: {num_gpus})'),
                                 dbc.Input(id='num-gpus',
                                           type="int",
-                                          value=0)]),
+                                          value=1)]),
                         dbc.FormGroup([
                             dbc.Label('Model Name'),
                             dbc.Input(id='model-name',
@@ -117,6 +119,7 @@ JOB_STATUS = dbc.Card(
                              'backgroundColor': 'red',
                              'color': 'white'}
                         ],
+                        page_size=8,
                         style_table={'height': '30rem', 'overflowY': 'auto', 'overflowX': 'scroll'}
                     )
                 ],
@@ -543,6 +546,7 @@ def file_manager(browse_format, browse_n_clicks, import_n_clicks, delete_n_click
     if changed_id == 'refresh-data.n_clicks':
         list_filename, selected_files = [], []
         datapath = requests.get(f'http://labelmaker-api:8005/api/v0/export/datapath').json()
+        print(f'datapath {datapath}')
         if bool(datapath['datapath']) and os.path.isdir(datapath['datapath'][0]['file_path'][0]):
             list_filename, selected_files = datapath['filenames'], datapath['datapath'][0]['file_path'][0]
             if datapath['datapath'][0]['where'] == 'splash':
@@ -647,7 +651,7 @@ def update_table(n, row, active_cell, slider_value, close_clicks, filenames, cur
                     val = log
                     style_text = {'width': '100%', 'display': 'block'}
                 if data_table[row[0]]['job_type'].split(' ')[0] == 'prediction_model':
-                    start = log.find('filename')
+                    start = log.find('filename ')
                     if start > -1 and len(log) > start + 10 and len(filenames)>slider_value:
                         fig = get_class_prob(log, start, filenames[slider_value])
                         style_fig = {'width': '100%', 'display': 'block'}
