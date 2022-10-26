@@ -77,13 +77,13 @@ def load_from_splash(uri_list):
     '''
     url = f'{SPLASH_CLIENT}/datasets?'
     try:
-        params = {'uris': uri_list}
+        params = {'uris': uri_list, 'page[limit]': 1000}
         datasets = requests.get(url, params=params).json()
     except Exception as e:
         print(f'Loading from splash exception: {e}')
         datasets = []
         for i in range(math.ceil(len(uri_list)/25)):
-            params = {'uris': uri_list[i*25:min(25*(i+1), len(uri_list))]}
+            params = {'uris': uri_list[i*25:min(25*(i+1), len(uri_list))], 'page[limit]':1000}
             datasets = datasets + requests.get(url, params=params).json()
     labels_name_data = []
     for dataset in datasets:
@@ -146,13 +146,34 @@ def data_processing(parameters, data_dir, no_label=False):
                 if no_label:
                     classes = None
                     datagen = ImageDataGenerator(rescale=1/255)
-                    train_generator = datagen.flow_from_directory('/'.join(data_dir.split('/')[0:-1]),
-                                                                  target_size=(target_width, target_height),
-                                                                  color_mode=COLOR_MODE,
-                                                                  class_mode=None,
-                                                                  batch_size=batch_size,
-                                                                  shuffle=shuffle,
-                                                                  seed=seed)
+                    
+                    list_filename = []
+                    for dirpath, subdirs, files in os.walk(data_dir):
+                        for file in files:
+                            if os.path.splitext(file)[-1] in ['.tiff', '.tif', '.jpg', '.jpeg', '.png'] and not ('.' in os.path.splitext(file)[0]):
+                                filename = os.path.join(dirpath, file)
+                                list_filename.append(filename)
+                    
+                    data_df = pd.DataFrame(data=list_filename,
+                                           index=None,
+                                           columns=['filename'])
+                    train_generator = datagen.flow_from_dataframe(data_df,
+                                                        directory=data_dir,
+                                                        x_col='filename',
+                                                        target_size=(target_width, target_height),
+                                                        color_mode=COLOR_MODE,
+                                                        class_mode=None,
+                                                        batch_size=batch_size,
+                                                        shuffle=shuffle,
+                                                        seed=seed,
+                                                        )
+                    #train_generator = datagen.flow_from_directory('/'.join(data_dir.split('/')[0:-1]),
+                    #                                              target_size=(target_width, target_height),
+                    #                                              color_mode=COLOR_MODE,
+                    #                                              class_mode=None,
+                    #                                              batch_size=batch_size,
+                    #                                              shuffle=shuffle,
+                    #                                              seed=seed)
                     valid_generator = []
                 elif parameters.val_pct:
                     classes = [subdir for subdir in sorted(os.listdir(data_dir)) if os.path.isdir(os.path.join(data_dir, subdir))]
@@ -225,6 +246,7 @@ def data_processing(parameters, data_dir, no_label=False):
     
     else:
         splash_df, classes = load_from_splash(uri_list)
+        #print(splash_df)
         if parameters.val_pct:
             train_generator = datagen.flow_from_dataframe(splash_df,
                                                         directory=data_dir,

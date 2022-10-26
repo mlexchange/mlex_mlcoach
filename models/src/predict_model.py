@@ -29,7 +29,7 @@ if __name__ == '__main__':
     (test_generator, tmp), tmp_class = data_processing(data_parameters, test_dir, True)
     test_dir = '/'.join(test_dir.split('/')[0:-1])
     try:
-        test_filenames = [f'{test_dir}/{x}' for x in test_generator.filenames]
+        test_filenames = test_generator.filenames #[f'{test_dir}/{x}' for x in test_generator.filenames]
         class_dir = os.path.split(model_dir)[0]
         classes = pd.read_csv(class_dir+'/'+'classes.csv')
         classes = classes.values.tolist()
@@ -46,5 +46,7 @@ if __name__ == '__main__':
                                 verbose=0,
                                 callbacks=[TestCustomCallback(test_filenames, classes)])
     df_prob = pd.DataFrame(prob, columns=classes)
+    #print(df_prob)
     df_results = pd.concat([df_files,df_prob], axis=1)
-    df_results.to_pickle(out_dir + '/results.pkl')
+    df_results = df_results.set_index(['filename'])
+    df_results.to_parquet(out_dir + '/results.parquet')
