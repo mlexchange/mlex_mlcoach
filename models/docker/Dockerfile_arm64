@@ -1,4 +1,5 @@
-FROM armswdev/tensorflow-arm-neoverse:latest
+#FROM armswdev/tensorflow-arm-neoverse:latest
+FROM sonoisa/deep-learning-coding:pytorch1.12.0_tensorflow2.9.1
 
 COPY docker/requirements_arm64.txt requirements.txt
 USER root
