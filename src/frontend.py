@@ -56,7 +56,7 @@ RESOURCES_SETUP = html.Div(
                                 dbc.Label(f'Number of GPUs (Maximum available: {num_gpus})'),
                                 dbc.Input(id='num-gpus',
                                           type="int",
-                                          value=1)]),
+                                          value=0)]),
                         dbc.FormGroup([
                             dbc.Label('Model Name'),
                             dbc.Input(id='model-name',
