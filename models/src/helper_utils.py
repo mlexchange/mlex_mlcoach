@@ -75,16 +75,10 @@ def load_from_splash(uri_list):
     Returns:
         splash_df:   Dataframe of labeled images (docker path)
     '''
-    url = f'{SPLASH_CLIENT}/datasets?'
-    try:
-        params = {'uris': uri_list, 'page[limit]': 1000}
-        datasets = requests.get(url, params=params).json()
-    except Exception as e:
-        print(f'Loading from splash exception: {e}')
-        datasets = []
-        for i in range(math.ceil(len(uri_list)/25)):
-            params = {'uris': uri_list[i*25:min(25*(i+1), len(uri_list))], 'page[limit]':1000}
-            datasets = datasets + requests.get(url, params=params).json()
+    url = f'{SPLASH_CLIENT}/datasets/search'
+    params = {"page[offset]": 0, "page[limit]": len(uri_list)}
+    data = {'uris': uri_list}
+    datasets = requests.post(url, params=params, json=data).json()
     labels_name_data = []
     for dataset in datasets:
         for tag in dataset['tags']:
