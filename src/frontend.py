@@ -1,3 +1,4 @@
+import ast
 import json
 import os
 import pathlib
@@ -24,7 +25,7 @@ from file_manager import filename_list, move_a_file, move_dir, add_paths_from_di
                          file_explorer, DOCKER_DATA, DOCKER_HOME, LOCAL_HOME, UPLOAD_FOLDER_ROOT
 from helpers import SimpleJob
 from helpers import get_job, generate_figure, get_class_prob, model_list_GET_call, plot_figure, get_gui_components,\
-    get_counter
+                    get_counter, load_from_splash, get_host
 from kwarg_editor import JSONParameterEditor
 import templates
 
@@ -35,22 +36,24 @@ app = dash.Dash(__name__, external_stylesheets=external_stylesheets, suppress_ca
 DATA_DIR = str(os.environ['DATA_DIR'])
 USER = 'admin'
 MODELS = model_list_GET_call()
+HOST_NICKNAME = str(os.environ['HOST_NICKNAME'])
+num_processors, num_gpus = get_host(HOST_NICKNAME)
 
 
 RESOURCES_SETUP = html.Div(
     [
         dbc.Modal(
             [
-                dbc.ModalHeader("Resources Setup"),
+                dbc.ModalHeader("Choose number of computing resources:"),
                 dbc.ModalBody(
                     children=[
                         dbc.FormGroup([
-                                dbc.Label('Number of CPUs'),
+                                dbc.Label(f'Number of CPUs (Maximum available: {num_processors})'),
                                 dbc.Input(id='num-cpus',
                                           type="int",
-                                          value=1)]),
+                                          value=2)]),
                         dbc.FormGroup([
-                                dbc.Label('Number of GPUs'),
+                                dbc.Label(f'Number of GPUs (Maximum available: {num_gpus})'),
                                 dbc.Input(id='num-gpus',
                                           type="int",
                                           value=0)]),
@@ -83,6 +86,7 @@ JOB_STATUS = dbc.Card(
                     dbc.Row(
                         [
                             dbc.Button("Deselect Row", id="deselect-row", style={'margin-left': '1rem'}),
+                            dbc.Button("Stop Job", id="stop-row", color='warning'),
                             dbc.Button("Delete Job", id="delete-row", color='danger'),
                         ]
                     ),
@@ -116,6 +120,7 @@ JOB_STATUS = dbc.Card(
                              'backgroundColor': 'red',
                              'color': 'white'}
                         ],
+                        page_size=8,
                         style_table={'height': '30rem', 'overflowY': 'auto', 'overflowX': 'scroll'}
                     )
                 ],
@@ -205,7 +210,8 @@ SIDEBAR = [
     ),
     dcc.Store(id='warning-cause', data=''),
     dcc.Store(id='warning-cause-execute', data=''),
-    dcc.Store(id='counter', data=get_counter(USER))
+    dcc.Store(id='counter', data=get_counter(USER)),
+    dcc.Store(id='splash-indicator', data=False)
 ]
 
 # App contents (right hand side)
@@ -433,6 +439,7 @@ def upload_zip(iscompleted, upload_filename):
     Output('files-table', 'data'),
     Output('docker-file-paths', 'data'),
     Output('data-path', 'data'),
+    Output('splash-indicator', 'data'),
 
     Input('browse-format', 'value'),
     Input('browse-dir', 'n_clicks'),
@@ -475,14 +482,17 @@ def file_manager(browse_format, browse_n_clicks, import_n_clicks, delete_n_click
         files:              Filenames to be displayed in File Manager according to browse_format from docker/local path
         list_filename:      List of selected filenames in the directory AND SUBDIRECTORIES FROM DOCKER PATH
         selected_files:     List of selected filename FROM DOCKER PATH (no subdirectories)
+        splash:             Bool variable that indicates whether the labels are retrieved from splash-ml or not
     '''
     changed_id = dash.callback_context.triggered[0]['prop_id']
+    splash = dash.no_update
+
     # if a previous job is selected, it's data is automatically plotted
     if 'jobs-table.selected_rows' in changed_id and job_rows is not None:
         if len(job_rows)>0:
-            if job_data[job_rows[0]]["job_type"].split()[-1] != 'train_model':
+            if job_data[job_rows[0]]["job_type"].split()[0] != 'train_model':
                 filenames = add_paths_from_dir(job_data[job_rows[0]]["dataset"], ['tiff', 'tif', 'jpg', 'jpeg', 'png'], [])
-                return dash.no_update, filenames, dash.no_update
+                return dash.no_update, filenames, dash.no_update, splash
 
     supported_formats = []
     import_format = import_format.split(',')
@@ -492,9 +502,9 @@ def file_manager(browse_format, browse_n_clicks, import_n_clicks, delete_n_click
         for ext in import_format:
             supported_formats.append(ext.split('.')[1])
 
-    files = []
-    if browse_n_clicks or import_n_clicks:
-        files = filename_list(DOCKER_DATA, browse_format)
+    # files = []
+    # if browse_n_clicks or import_n_clicks:
+    files = filename_list(DOCKER_DATA, browse_format)
 
     selected_files = []
     list_filename = []
@@ -536,19 +546,22 @@ def file_manager(browse_format, browse_n_clicks, import_n_clicks, delete_n_click
     
     if changed_id == 'refresh-data.n_clicks':
         list_filename, selected_files = [], []
-        datapath = requests.get(f'http://labelmaker-api:8005/api/v0/export/datapath').json()
-        if bool(datapath['datapath']) and os.path.isdir(datapath['datapath'][0]['file_path']):
-            list_filename, selected_files = datapath['filenames'], datapath['datapath'][0]['file_path']
-        return files,  list_filename, selected_files
+        datapath = requests.get(f'http://labelmaker-api:8005/api/v0/datapath/export_dataset').json()
+        if datapath:
+            if bool(datapath['datapath']) and os.path.isdir(datapath['datapath']['file_path'][0]):
+                list_filename, selected_files = datapath['filenames'], datapath['datapath']['file_path'][0]
+                if datapath['datapath']['where'] == 'splash':
+                    splash = True
+        return files,  list_filename, selected_files, splash
         
     elif changed_id == 'import-dir.n_clicks':
-        return files, list_filename, selected_files
+        return files, list_filename, selected_files, False
         
     elif changed_id == 'clear-data.n_clicks':
-        return [], [], []
+        return [], [], [], False
 
     else:
-        return files, dash.no_update, dash.no_update
+        return files, dash.no_update, dash.no_update, splash
 
 
 @app.callback(
@@ -639,7 +652,7 @@ def update_table(n, row, active_cell, slider_value, close_clicks, filenames, cur
                     val = log
                     style_text = {'width': '100%', 'display': 'block'}
                 if data_table[row[0]]['job_type'].split(' ')[0] == 'prediction_model':
-                    start = log.find('filename')
+                    start = log.find('filename ')
                     if start > -1 and len(log) > start + 10 and len(filenames)>slider_value:
                         fig = get_class_prob(log, start, filenames[slider_value])
                         style_fig = {'width': '100%', 'display': 'block'}
@@ -670,17 +683,22 @@ def deselect_row(n_click):
     Output('delete-modal', 'is_open'),
     Input('confirm-delete-row', 'n_clicks'),
     Input('delete-row', 'n_clicks'),
+    Input('stop-row', 'n_clicks'),
     State('jobs-table', 'selected_rows'),
     State('jobs-table', 'data'),
     prevent_initial_call=True
 )
-def delete_row(confirm_delete, delete, row, job_data):
+def delete_row(confirm_delete, delete, stop, row, job_data):
     '''
     This callback deletes the selected model in the table
     '''
     changed_id = [p['prop_id'] for p in dash.callback_context.triggered][0]
     if 'delete-row.n_clicks' == changed_id:
         return True
+    elif 'stop-row.n_clicks' == changed_id:
+        job_uid = job_data[row[0]]['job_id']
+        requests.patch(f'http://job-service:8080/api/v0/jobs/{job_uid}/terminate')
+        return False
     else:
         job_uid = job_data[row[0]]['job_id']
         requests.delete(f'http://job-service:8080/api/v0/jobs/{job_uid}/delete')
@@ -733,9 +751,10 @@ def load_parameters(model_selection, action_selection, row):
     State("npz-img-key", "value"),
     State("npz-label-key", "value"),
     State("npz-modal", "is_open"),
+    State('splash-indicator', 'data'),
     prevent_intial_call=True
 )
-def refresh_image(import_dir, confirm_import, img_ind, filenames, img_keyword, label_keyword, npz_modal):
+def refresh_image(import_dir, confirm_import, img_ind, filenames, img_keyword, label_keyword, npz_modal, splash):
     '''
     This callback updates the image in the display
     Args:
@@ -754,6 +773,7 @@ def refresh_image(import_dir, confirm_import, img_ind, filenames, img_keyword, l
         img-slider-value:   Current value of the slider
         content_style:      Content visibility
         warning-cause:      Cause that triggered warning pop-up
+        splash:             Bool variable that indicates whether the labels are retrieved from splash-ml or not
     '''
     current_im_label=''
     changed_id = [p['prop_id'] for p in dash.callback_context.triggered][0]
@@ -779,10 +799,13 @@ def refresh_image(import_dir, confirm_import, img_ind, filenames, img_keyword, l
                 if img_ind>slider_max:
                     img_ind = 0
                 image = Image.open(filenames[img_ind])
-                current_image_label = filenames[img_ind]
                 fig = plot_figure(image)
                 current_im_label = f"Image: {filenames[img_ind]}"
-                label = f"Label: {filenames[img_ind].split('/')[-2]}"  # determined by the last directory in the path
+                if splash:
+                    label = load_from_splash(filenames[img_ind])
+                else:
+                    label = filenames[img_ind].split('/')[-2] # determined by the last directory in the path
+                label = f"Label: {label}"
             return fig, current_im_label, label, slider_max, img_ind, {'display': 'block'}, dash.no_update
         except Exception as e:
             print(f'Exception in refresh_image callback {e}')
@@ -811,9 +834,10 @@ def refresh_image(import_dir, confirm_import, img_ind, filenames, img_keyword, l
     State("npz-img-key", "value"),
     State("npz-label-key", "value"),
     State("model-name", "value"),
+    State('splash-indicator', 'data'),
     prevent_intial_call=True)
 def execute(execute, submit, children, num_cpus, num_gpus, action_selection, job_data, row, data_path, filenames,
-            counters, x_key, y_key, model_name):
+            counters, x_key, y_key, model_name, splash):
     '''
     This callback submits a job request to the compute service according to the selected action & model
     Args:
@@ -830,6 +854,7 @@ def execute(execute, submit, children, num_cpus, num_gpus, action_selection, job
         counters:           List of counters to assign a number to each job according to its action (train vs evaluate)
         x_key:              Keyword for x data in NPZ file
         y_key:              Keyword for y data in NPZ file
+        splash:             Bool variable that indicates whether the labels are retrieved from splash-ml or not
     Returns:
         open/close the resources setup modal
     '''
@@ -849,6 +874,8 @@ def execute(execute, submit, children, num_cpus, num_gpus, action_selection, job
         out_path = pathlib.Path('/app/work/data/mlexchange_store/{}/{}'.format(USER, experiment_id))
         out_path.mkdir(parents=True, exist_ok=True)
         input_params = {'x_key': x_key, 'y_key': y_key}
+        if splash:
+            input_params['splash'] = filenames
         kwargs = {}
         if bool(children):
             try:
@@ -896,7 +923,7 @@ def execute(execute, submit, children, num_cpus, num_gpus, action_selection, job
                         working_directory='{}'.format(DATA_DIR),
                         uri='mlexchange1/tensorflow-neural-networks',
                         cmd=' '.join([command] + directories + ['\'' + json.dumps(input_params) + '\'']),
-                        kwargs={'job_type': f'{action_selection} {count}',
+                        kwargs={'job_type': action_selection,
                                 'experiment_id': experiment_id,
                                 'dataset': data_path,
                                 'params': input_params,

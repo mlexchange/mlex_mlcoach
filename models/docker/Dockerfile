@@ -1,4 +1,4 @@
-FROM tensorflow/tensorflow:latest-gpu
+FROM tensorflow/tensorflow:2.7.0
 
 COPY docker/requirements.txt requirements.txt
 

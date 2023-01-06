@@ -77,16 +77,14 @@
       "comp_group": "train_model"
     },
     {
-      "type": "radio",
-      "name": "pooling",
-      "title": "Pooling Options",
-      "param_key": "pooling",
+      "type": "dropdown",
+      "name": "weights",
+      "title": "Weights",
+      "param_key": "weights",
       "value": "None",
-      "options":
-      [
+      "options": [
         {"label": "None", "value": "None"},
-        {"label": "Maximum", "value": "max"},
-        {"label": "Average", "value": "avg"}
+        {"label": "imagenet", "value": "imagenet"}
       ],
       "comp_group": "train_model"
     },
