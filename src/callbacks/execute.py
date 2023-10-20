@@ -1,8 +1,8 @@
 import json
 import pathlib
 
-from dash import Input, Output, State, callback
 import dash
+from dash import Input, Output, State, callback
 
 from file_manager.data_project import DataProject
 from app_layout import USER, DATA_DIR
@@ -29,7 +29,7 @@ from utils.data_utils import prepare_directories
     State("model-name", "value"),
     State({'base_id': 'file-manager', 'name': 'project-id'}, 'data'),
     State("event-id", "value"),
-    prevent_intial_call=True)
+    prevent_initial_call=True)
 def execute(execute, submit, children, num_cpus, num_gpus, action_selection, job_data, row, file_paths,
             counters, model_name, project_id, event_id):
     '''
@@ -51,6 +51,8 @@ def execute(execute, submit, children, num_cpus, num_gpus, action_selection, job
         event_id:           Tagging event id for version control of tags
     Returns:
         open/close the resources setup modal, and submits the training/prediction job accordingly
+        counters:           Updates job counters if no model name was selected
+        warning_cause:      Activates a warning pop-up window if needed
     '''
     changed_id = [p['prop_id'] for p in dash.callback_context.triggered][0]
     data_project = DataProject()
