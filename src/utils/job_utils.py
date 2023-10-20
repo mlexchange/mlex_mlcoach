@@ -98,9 +98,9 @@ class MlexJob:
                  working_directory,
                  job_kwargs,
                  mlex_app = 'mlcoach',
-                 status=None,
-                 logs=None,
-                 uid=None,
+                 status={'state': 'queue'},
+                 logs='',
+                 uid='',
                  **kwargs):
         self.uid = uid
         self.mlex_app = mlex_app

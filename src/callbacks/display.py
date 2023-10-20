@@ -69,12 +69,14 @@ def refresh_image(file_paths, img_ind, labeled_img_ind, row, event_id, data_tabl
             if event_id is not None:
                 datasets = requests.get(f'{SPLASH_URL}/datasets',
                                         params={'uris': uri,
+                                                'event_id': event_id,
                                                 'project': project_id}).json()
                 if len(datasets)>0:
-                    for tag in datasets[0]['tags']:
-                        if tag['event_id'] == event_id:
-                            label = f"Label: {tag['name']}"
-                            break
+                    for dataset in datasets:
+                        for tag in dataset['tags']:
+                            if tag['event_id'] == event_id:
+                                label = f"Label: {tag['name']}"
+                                break
             return fig, slider_max, img_ind, label, dash.no_update
         except Exception as e:
             print(f'Exception in refresh_image callback {e}')
@@ -91,11 +93,12 @@ def refresh_image(file_paths, img_ind, labeled_img_ind, row, event_id, data_tabl
     Input('img-slider', 'value'),
     Input('img-labeled-indx', 'value'),
     Input('jobs-table', 'selected_rows'),
+    Input('interval', 'n_intervals'),
 
     State('jobs-table', 'data'),
     prevent_intial_call=True
 )
-def refresh_results(img_ind, labeled_img_ind, row, data_table):
+def refresh_results(img_ind, labeled_img_ind, row, interval, data_table):
     '''
     This callback updates the results in the display
     Args:
@@ -111,6 +114,8 @@ def refresh_results(img_ind, labeled_img_ind, row, data_table):
     if 'img-labeled-indx' in changed_id and labeled_img_ind is not None:
         img_ind = labeled_img_ind
     data_project = DataProject()
+    results_fig = dash.no_update
+    results_style_fig = dash.no_update
     if row is not None and len(row)>0 and row[0] < len(data_table):
         log = data_table[row[0]]["job_logs"]
         if data_table[row[0]]['job_type'].split()[0] == 'prediction_model' and log is not None:

@@ -86,12 +86,11 @@ def get_labeled_indx(confirm_load, file_paths, project_id, event_id):
     options = []
     if num_imgs>0:
         response = requests.post(f'{SPLASH_URL}/datasets/search', 
-                                 params={'limit': num_imgs}, 
-                                 json={'project': project_id,
-                                       'event_id': event_id})
+                                 params={'page[limit]': num_imgs}, 
+                                 json={'event_id': event_id})
         for dataset in response.json():
             index = next((i for i, data_obj in enumerate(data_project.data) 
-                          if data_obj.uri == dataset['uri']), None)
+                          if data_obj.uri == dataset['uri'] and len(dataset['tags'])>0), None)
             if index is not None:
                 options.append(index)
-    return options
+    return sorted(options)
