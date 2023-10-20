@@ -1,11 +1,11 @@
 import shutil
 import pathlib
-import dash
 from dash import Input, Output, State, dcc
 from uuid import uuid4
 
 from app_layout import app, USER, long_callback_manager
 from callbacks.display import refresh_image, refresh_results, toggle_warning_modal
+from callbacks.download import toggle_storage_modal, disable_download
 from callbacks.load_labels import load_from_splash_modal
 from callbacks.execute import execute
 from callbacks.table import update_table, delete_row
@@ -14,32 +14,27 @@ from utils.model_utils import get_gui_components
 
 
 @app.callback(
-    Output("app-parameters", "children"),
-    Output("download-button", "style"),
-
-    Input("model-selection", "value"),
-    Input("action", "value"),
-    Input("jobs-table", "selected_rows"),
-    prevent_intial_call=True)
-def load_parameters(model_selection, action_selection, row):
+    Output('app-parameters', 'children'),
+    Input('model-selection', 'value'),
+    Input('action', 'value'),
+    prevent_intial_call=True
+)
+def load_parameters(model_selection, action_selection):
     '''
-    This callback dynamically populates the parameters of the website according to the selected action & model.
+    This callback dynamically populates the parameters and contents of the website according to the 
+    selected action & model.
     Args:
         model_selection:    Selected model (from content registry)
-        action_selection:   Selected action (pre-defined actions in MLCoach)
-        row:                Selected job (model)
+        action_selection:   Selected action (pre-defined actions in Data Clinic)
     Returns:
         app-parameters:     Parameters according to the selected model & action
-        download-button:    Shows the download button
     '''
     parameters = get_gui_components(model_selection, action_selection)
-    gui_item = JSONParameterEditor(_id={'type': str(uuid4())},  # pattern match _id (base id), name
-                                   json_blob=parameters)
+    gui_item = JSONParameterEditor(_id={'type': str(uuid4())}, # pattern match _id (base id), name
+                                   json_blob=parameters,
+                                   )
     gui_item.init_callbacks(app)
-    style = dash.no_update
-    if row is not None:
-        style = {'width': '100%', 'justify-content': 'center'}
-    return gui_item, style
+    return gui_item
 
 
 @app.long_callback(
@@ -50,7 +45,8 @@ def load_parameters(model_selection, action_selection, row):
     State("jobs-table", "data"),
     State("jobs-table", "selected_rows"),
     manager=long_callback_manager,
-    prevent_intial_call=True)
+    prevent_intial_call=True
+)
 def save_results(download, job_data, row):
     '''
     This callback saves the experimental results as a ZIP file

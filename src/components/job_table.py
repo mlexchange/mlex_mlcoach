@@ -1,4 +1,4 @@
-from dash import dash_table
+from dash import dash_table, dcc
 import dash_bootstrap_components as dbc
 
 
@@ -11,21 +11,51 @@ def job_table():
                         dbc.Row(
                             [
                                 dbc.Col(
-                                    dbc.Button("Deselect Row", 
-                                            id="deselect-row",
-                                            style={'width': '100%', 'margin-bottom': '1rem'})
+                                    dbc.Button(
+                                        "Deselect Row", 
+                                        id="deselect-row",
+                                        style={'width': '100%', 'margin-bottom': '1rem'}
+                                        )
                                 ),
                                 dbc.Col(
-                                    dbc.Button("Stop Job", 
-                                            id="stop-row", 
-                                            color='warning',
-                                            style={'width': '100%'})
+                                    [
+                                        dbc.Button(
+                                            'Download Results',
+                                            id='download-button',
+                                            style={'width': '100%', 'margin-bottom': '1rem'},
+                                            disabled=True,
+                                        ),
+                                        dcc.Download(id='download-out'),
+                                        dbc.Modal(
+                                            [
+                                                dbc.ModalBody('Download will start shortly'),
+                                                dbc.ModalFooter(
+                                                    dbc.Button(
+                                                        'OK',
+                                                        id='close-storage-modal'
+                                                        )
+                                                    )
+                                            ],
+                                            id="storage-modal",
+                                            is_open=False
+                                        )
+                                    ]
                                 ),
                                 dbc.Col(
-                                    dbc.Button("Delete Job", 
-                                            id="delete-row", 
-                                            color='danger',
-                                            style={'width': '100%'})
+                                    dbc.Button(
+                                        "Stop Job", 
+                                        id="stop-row", 
+                                        color='warning',
+                                        style={'width': '100%'}
+                                        )
+                                ),
+                                dbc.Col(
+                                    dbc.Button(
+                                        "Delete Job", 
+                                        id="delete-row", 
+                                        color='danger',
+                                        style={'width': '100%'}
+                                        )
                                 ),
                             ]
                         ),
