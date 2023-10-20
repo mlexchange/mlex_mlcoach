@@ -9,9 +9,14 @@ def loss_plot():
                                     id="plot-card",
                                     children=[
                                         dbc.CardHeader("Loss Plot"),
-                                        dbc.CardBody([
-                                            dcc.Graph(id='loss-plot',
-                                                      style={'width':'100%'})])
+                                        dbc.CardBody(
+                                            [
+                                                dcc.Graph(
+                                                    id='loss-plot',
+                                                    style={'width':'100%'}
+                                                    )
+                                                ]
+                                            )
                                         ]
                                 )
                     )
