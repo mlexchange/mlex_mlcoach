@@ -26,7 +26,7 @@ from utils.plot_utils import plot_figure, get_class_prob, generate_loss_plot
 
     State('jobs-table', 'data'),
     State({'base_id': 'file-manager', 'name': 'project-id'}, 'data'),
-    prevent_intial_call=True
+    prevent_initial_call=True
 )
 def refresh_image(file_paths, img_ind, labeled_img_ind, row, event_id, data_table, project_id):
     '''
@@ -80,10 +80,9 @@ def refresh_image(file_paths, img_ind, labeled_img_ind, row, event_id, data_tabl
             return fig, slider_max, img_ind, label, dash.no_update
         except Exception as e:
             print(f'Exception in refresh_image callback {e}')
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, \
-                dash.no_update, 'wrong_dataset'
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, 'wrong_dataset'
     else:
-        raise PreventUpdate
+        return plot_figure(), 0, 0, '', dash.no_update
 
 
 @callback(
@@ -96,7 +95,7 @@ def refresh_image(file_paths, img_ind, labeled_img_ind, row, event_id, data_tabl
     Input('interval', 'n_intervals'),
 
     State('jobs-table', 'data'),
-    prevent_intial_call=True
+    prevent_initial_call=True
 )
 def refresh_results(img_ind, labeled_img_ind, row, interval, data_table):
     '''
@@ -126,13 +125,13 @@ def refresh_results(img_ind, labeled_img_ind, row, interval, data_table):
             start = log.find('filename')
             if start > -1 and len(log) > start + 10 and len(data_project.data)>img_ind:
                 results_fig = get_class_prob(log, start, data_project.data[img_ind].uri)
-                results_style_fig = {'width': '100%', 'height': '19rem', 'display': 'block'}
+                results_style_fig = {'width': '100%', 'height': '23rem', 'display': 'block'}
         elif log:
             if data_table[row[0]]['job_type'].split(' ')[0] == 'train_model':
                 start = log.find('epoch')
                 if start > -1 and len(log) > start + 5:
                     results_fig = generate_loss_plot(log, start)
-                    results_style_fig = {'width': '100%', 'height': '19rem', 'display': 'block'}
+                    results_style_fig = {'width': '100%', 'height': '23rem', 'display': 'block'}
         return results_fig, results_style_fig     
     else:
         raise PreventUpdate

@@ -4,7 +4,9 @@ if sys.version_info[0] < 3:
 else:
     from io import StringIO
 
+import numpy as np
 import pandas as pd
+from PIL import Image
 import plotly
 import plotly.express as px
 import plotly.graph_objects as go
@@ -71,22 +73,23 @@ def get_class_prob(log, start, filename):
         return go.Figure(go.Scatter(x=[], y=[]))
 
 
-def plot_figure(image):
+def plot_figure(image=None):
     '''
     Plot input data
     '''
-    fig = px.imshow(image, height=350)
+    if not image:           # Create a blank image
+        blank_image = np.zeros((300,300,3), dtype=np.uint8)
+        image = Image.fromarray(blank_image)
+    fig = px.imshow(image,
+                    height=400)
     fig.update_xaxes(showgrid=False,
                      showticklabels=False,
                      zeroline=False)
     fig.update_yaxes(showgrid=False,
                      showticklabels=False,
                      zeroline=False)
+    fig.update_layout(coloraxis_showscale=False)
     fig.update_layout(margin=dict(l=0, r=0, t=0, b=10))
-    try:
-        fig.update_traces(dict(showscale=False, coloraxis=None))
-    except Exception as e:
-        print(e)
     png = plotly.io.to_image(fig, format='jpg')
     png_base64 = base64.b64encode(png).decode('ascii')
     return "data:image/jpg;base64,{}".format(png_base64)
