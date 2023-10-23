@@ -39,7 +39,7 @@ def load_from_splash_modal(load_n_click, confirm_load, project_id, file_paths):
     data_project.init_from_dict(file_paths)
     num_imgs = len(data_project.data)
     response = requests.post(f'{SPLASH_URL}/datasets/search', 
-                             params={'limit': num_imgs}, 
+                             params={'page[limit]': num_imgs}, 
                              json={'project': project_id})
     event_ids = []
     for dataset in response.json():
