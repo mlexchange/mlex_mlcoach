@@ -86,22 +86,23 @@ def execute(execute, submit, children, num_cpus, num_gpus, action_selection, job
             model_path = pathlib.Path('/app/work/data/mlexchange_store/{}/{}'.format(USER, training_exp_id))
             command = f"{prediction_cmd} -d {data_info} -m {model_path} -o {out_path}"
             kwargs = {'train_params': job_data[row[0]]['parameters']}
-        job_kwargs = {
-            'uri': model_uri,
-            'type': 'docker',
-            'cmd': f"{command} -p \'{json.dumps(input_params)}\'",
-            'kwargs': {
-                'job_type': action_selection,
-                'experiment_id': experiment_id,
-                'dataset': project_id,
-                'params': input_params,
-                **kwargs
+        job = MlexJob(
+            service_type='backend',
+            description=f'{action_selection} {count}' if model_name=='' else model_name,
+            working_directory='{}'.format(DATA_DIR),
+            job_kwargs={
+                'uri': model_uri,
+                'type': 'docker',
+                'cmd': f"{command} -p \'{json.dumps(input_params)}\'",
+                'kwargs': {
+                    'job_type': action_selection,
+                    'experiment_id': experiment_id,
+                    'dataset': project_id,
+                    'params': input_params,
+                    **kwargs
+                    }
                 }
-            }
-        job = MlexJob(service_type='backend',
-                      description=f'{action_selection} {count}' if model_name=='' else model_name,
-                      working_directory='{}'.format(DATA_DIR),
-                      job_kwargs=job_kwargs)
+            )
         job.submit(USER, num_cpus, num_gpus)
         return False, counters, ''
     return False, counters, ''

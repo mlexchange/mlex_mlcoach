@@ -1,5 +1,4 @@
 import os
-import json
 import requests
 
 CONTENT_URL = str(os.environ['MLEX_CONTENT_URL'])
