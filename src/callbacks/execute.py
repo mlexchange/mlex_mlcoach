@@ -7,7 +7,8 @@ from dash import Input, Output, State, callback
 from file_manager.data_project import DataProject
 from app_layout import USER, DATA_DIR
 from utils.job_utils import MlexJob, TableJob
-from utils.data_utils import prepare_directories
+from utils.data_utils import prepare_directories, get_input_params
+from utils.model_utils import get_model_content
 
 
 @callback(
@@ -29,9 +30,10 @@ from utils.data_utils import prepare_directories
     State("model-name", "value"),
     State({'base_id': 'file-manager', 'name': 'project-id'}, 'data'),
     State("event-id", "value"),
+    State("model-selection", "value"),
     prevent_initial_call=True)
 def execute(execute, submit, children, num_cpus, num_gpus, action_selection, job_data, row, file_paths,
-            counters, model_name, project_id, event_id):
+            counters, model_name, project_id, event_id, model_id):
     '''
     This callback submits a job request to the compute service according to the selected action & model
     Args:
@@ -49,6 +51,7 @@ def execute(execute, submit, children, num_cpus, num_gpus, action_selection, job
         model_name:         User-defined name for training or prediction model
         project_id:         Data project id
         event_id:           Tagging event id for version control of tags
+        model_id:           UID of model in content registry
     Returns:
         open/close the resources setup modal, and submits the training/prediction job accordingly
         counters:           Updates job counters if no model name was selected
@@ -60,55 +63,43 @@ def execute(execute, submit, children, num_cpus, num_gpus, action_selection, job
     if 'execute.n_clicks' in changed_id:
         if len(data_project.data) == 0:
             return False, counters, 'no_dataset'
-        if action_selection != 'train_model' and not row:
+        elif action_selection != 'train_model' and not row:
             return False, counters, 'no_row_selected'
-        if row:
-            if action_selection != 'train_model' and job_data[row[0]]['job_type'].split(' ')[0] != 'train_model':
-                return False, counters, 'no_row_selected'
-        return True, counters, ''
+        elif action_selection != 'train_model' and job_data[row[0]]['job_type']!='train_model':
+            return False, counters, 'no_row_selected'
+        else:
+            return True, counters, ''
     if 'submit.n_clicks' in changed_id:
+        model_uri, [train_cmd, prediction_cmd] = get_model_content(model_id)
         counters = TableJob.get_counter(USER)
         experiment_id, out_path, data_info = prepare_directories(USER, data_project, project_id)
-        input_params = {}
+        input_params = get_input_params(children)
         kwargs = {}
-        if bool(children):
-            try:
-                for child in children['props']['children']:
-                    key = child["props"]["children"][1]["props"]["id"]["param_key"]
-                    value = child["props"]["children"][1]["props"]["value"]
-                    input_params[key] = value
-            except Exception:
-                for child in children:
-                    key = child["props"]["children"][1]["props"]["id"]
-                    value = child["props"]["children"][1]["props"]["value"]
-                    input_params[key] = value
         if action_selection == 'train_model':
             counters[0] = counters[0] + 1
             count = counters[0]
-            command = f"python3 src/train_model.py -d {data_info} -o {out_path} -e {event_id}"
+            command = f"{train_cmd} -d {data_info} -o {out_path} -e {event_id}"
         else:
-            training_exp_id = job_data[row[0]]['experiment_id']
-            model_path = pathlib.Path('/app/work/data/mlexchange_store/{}/{}'.format(USER, 
-                                                                                     training_exp_id))
-        if action_selection == 'prediction_model':
             counters[1] = counters[1] + 1
             count = counters[1]
-            command = f"python3 src/predict_model.py -d {data_info} -m {model_path} -o {out_path}"
+            training_exp_id = job_data[row[0]]['experiment_id']
+            model_path = pathlib.Path('/app/work/data/mlexchange_store/{}/{}'.format(USER, training_exp_id))
+            command = f"{prediction_cmd} -d {data_info} -m {model_path} -o {out_path}"
             kwargs = {'train_params': job_data[row[0]]['parameters']}
-        if len(model_name)==0:      # if model_name was not defined
-            model_name = f'{action_selection} {count}'
-        job_kwargs = {'uri': 'mlexchange1/tensorflow-neural-networks:latest',
-                      'type': 'docker',
-                      'cmd': f"{command} -p \'{json.dumps(input_params)}\'",
-                      'kwargs': 
-                        {'job_type': action_selection,
-                         'experiment_id': experiment_id,
-                         'dataset': project_id,
-                         'params': input_params,
-                         **kwargs}
-                        }
+        job_kwargs = {
+            'uri': model_uri,
+            'type': 'docker',
+            'cmd': f"{command} -p \'{json.dumps(input_params)}\'",
+            'kwargs': {
+                'job_type': action_selection,
+                'experiment_id': experiment_id,
+                'dataset': project_id,
+                'params': input_params,
+                **kwargs
+                }
+            }
         job = MlexJob(service_type='backend',
-                      description=model_name,
+                      description=f'{action_selection} {count}' if model_name=='' else model_name,
                       working_directory='{}'.format(DATA_DIR),
                       job_kwargs=job_kwargs)
         job.submit(USER, num_cpus, num_gpus)
