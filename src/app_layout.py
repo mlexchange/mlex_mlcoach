@@ -19,15 +19,14 @@ from utils.job_utils import get_host, TableJob
 from utils.model_utils import get_model_list
 
 USER = 'admin'
-DATA_DIR = str(os.environ['DATA_DIR'])
+DATA_DIR = os.getenv('DATA_DIR')
 DOCKER_DATA = pathlib.Path.home() / 'data'
-LOCAL_DATA = str(os.environ['DATA_DIR'])
-DOCKER_HOME = str(DOCKER_DATA) + '/'
-LOCAL_HOME = str(LOCAL_DATA)
 UPLOAD_FOLDER_ROOT = DOCKER_DATA / 'upload'
-SPLASH_URL = str(os.environ['SPLASH_URL'])
-TILED_KEY = str(os.environ['TILED_KEY'])
-HOST_NICKNAME = str(os.environ['HOST_NICKNAME'])
+SPLASH_URL = os.getenv('SPLASH_URL')
+TILED_KEY = os.getenv('TILED_KEY')
+if TILED_KEY=='':
+    TILED_KEY = None
+HOST_NICKNAME = os.getenv('HOST_NICKNAME')
 num_processors, num_gpus = get_host(HOST_NICKNAME)
 
 #### SETUP DASH APP ####
