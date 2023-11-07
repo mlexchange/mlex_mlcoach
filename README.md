@@ -7,15 +7,15 @@ First, let's install docker:
 
 * https://docs.docker.com/engine/install/
 
-Next, let's setup its dependencies:
-* [mlex_computing_api](https://github.com/mlexchange/mlex_computing_api)
-* [mlex_content_registry](https://github.com/mlexchange/mlex_content_registry)
+Next, let's [install the MLExchange platform](https://github.com/mlexchange/mlex).
 
 Before moving to the next step, please make sure that the computing API and the content 
 registry are up and running. For more information, please refer to their respective 
 README files.
+
+* Clone this repository in your local device.
 * Next, cd into mlex_mlcoach
-* type `docker-compose up --build` into your terminal
+* type `docker-compose up` into your terminal
 
 Finally, you can access MLCoach at:
 * Dash app: http://localhost:8062/
@@ -29,7 +29,7 @@ to use this application.
 Further information can be found in [concepts](/docs/concepts.md).
 
 # Copyright
-MLExchange Copyright (c) 2021, The Regents of the University of California, through Lawrence Berkeley National Laboratory (subject to receipt of any required approvals from the U.S. Dept. of Energy). All rights reserved.
+MLExchange Copyright (c) 2023, The Regents of the University of California, through Lawrence Berkeley National Laboratory (subject to receipt of any required approvals from the U.S. Dept. of Energy). All rights reserved.
 
 If you have questions about your rights to use or distribute this software, please contact Berkeley Lab's Intellectual Property Office at IPO@lbl.gov.
 
