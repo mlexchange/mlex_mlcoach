@@ -23,6 +23,9 @@ services:
       - 127.0.0.1:8062:8050
     networks:
       - computing_api_default
+  
+  classifier:
+    image: ghcr.io/mlexchange/mlex_image_classification:main
 
 networks:
   computing_api_default:

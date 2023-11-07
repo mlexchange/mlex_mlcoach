@@ -26,7 +26,9 @@ to use this application.
 # Model Description
 **TF-NeuralNetworks:** Assortment of neural networks implemented in [TensorFlow](https://www.tensorflow.org).
 
-Further information can be found in [concepts](/docs/concepts.md).
+Further information can be found in [mlex_image_classification](https://github.com/mlexchange/mlex_image_classification).
+
+To make existing algorithms available in Data Clinic, make sure to upload the `model description` to the content registry.
 
 # Copyright
 MLExchange Copyright (c) 2023, The Regents of the University of California, through Lawrence Berkeley National Laboratory (subject to receipt of any required approvals from the U.S. Dept. of Energy). All rights reserved.
