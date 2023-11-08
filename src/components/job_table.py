@@ -10,6 +10,18 @@ def job_table():
                     children=[
                         dbc.Row(
                             [
+                                dbc.Alert(
+                                    "Your ML job is being prepared, it will be shown in the table shortly.",
+                                    id="job-alert",
+                                    dismissable=True,
+                                    is_open=False,
+                                ),
+                                dbc.Alert(
+                                    "Your ML job has been succesfully submitted.",
+                                    id="job-alert-confirm",
+                                    dismissable=True,
+                                    is_open=False,
+                                ),
                                 dbc.Col(
                                     dbc.Button(
                                         "Deselect Row", 
