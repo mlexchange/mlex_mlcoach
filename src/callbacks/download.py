@@ -12,7 +12,7 @@ def disable_download(row, job_table):
     This callback enables or disables the download button
     '''
     disabled_button = True
-    if row is not None and job_table[row[0]]['status']=='complete':
+    if row is not None and len(row)>0 and job_table[row[0]]['status']=='complete':
         disabled_button = False
     return disabled_button
 
