@@ -95,9 +95,10 @@ def refresh_image(file_paths, img_ind, labeled_img_ind, row, event_id, data_tabl
     Input('interval', 'n_intervals'),
 
     State('jobs-table', 'data'),
+    State('results-plot', 'figure'),
     prevent_initial_call=True
 )
-def refresh_results(img_ind, labeled_img_ind, row, interval, data_table):
+def refresh_results(img_ind, labeled_img_ind, row, interval, data_table, current_fig):
     '''
     This callback updates the results in the display
     Args:
@@ -105,6 +106,7 @@ def refresh_results(img_ind, labeled_img_ind, row, interval, data_table):
         labeled_img_ind:    Indexes of the labeled images in this data set
         row:                Selected job (model) 
         data_table:         Data in table of jobs
+        current_fig:        Current loss plot
     Returns:
         results_plot:       Output results with probabilities per class
         results_style:      Modify visibility of output results
@@ -115,9 +117,10 @@ def refresh_results(img_ind, labeled_img_ind, row, interval, data_table):
     data_project = DataProject()
     results_fig = dash.no_update
     results_style_fig = dash.no_update
-    if row is not None and len(row)>0 and row[0] < len(data_table):
+    if row is not None and len(row)>0 and row[0]<len(data_table):
         log = data_table[row[0]]["job_logs"]
-        if data_table[row[0]]['job_type'].split()[0] == 'prediction_model' and log is not None:
+        if 'interval' not in changed_id and data_table[row[0]]['job_type'] == 'prediction_model' \
+            and log is not None:
             job_id = data_table[row[0]]['experiment_id']
             data_path = pathlib.Path('data/mlexchange_store/{}/{}'.format(USER, job_id))
             data_info = pd.read_parquet(f'{data_path}/data_info.parquet', engine='pyarrow')
@@ -126,12 +129,20 @@ def refresh_results(img_ind, labeled_img_ind, row, interval, data_table):
             if start > -1 and len(log) > start + 10 and len(data_project.data)>img_ind:
                 results_fig = get_class_prob(log, start, data_project.data[img_ind].uri)
                 results_style_fig = {'width': '100%', 'height': '23rem', 'display': 'block'}
-        elif log:
-            if data_table[row[0]]['job_type'].split(' ')[0] == 'train_model':
+        elif log and data_table[row[0]]['job_type'] == 'train_model':
+            if data_table[row[0]]['job_type'] == 'train_model':
                 start = log.find('epoch')
                 if start > -1 and len(log) > start + 5:
                     results_fig = generate_loss_plot(log, start)
                     results_style_fig = {'width': '100%', 'height': '23rem', 'display': 'block'}
+        # Do not update the plot unless loss plot changed
+        if current_fig and results_fig!=dash.no_update:
+            try:
+                if current_fig['data'][0]['x'] == list(results_fig['data'][0]['x']):
+                    results_fig = dash.no_update
+                    results_style_fig = dash.no_update
+            except Exception as e:
+                print(e)
         return results_fig, results_style_fig     
     else:
         raise PreventUpdate
