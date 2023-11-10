@@ -24,13 +24,17 @@ def main_display(loss_plot, job_table):
                                 html.Img(
                                     id='img-output',
                                     src=plot_figure(),
-                                    style={'width':'100%'}
+                                    style={
+                                        'height': '60%',
+                                        'margin': 'auto',
+                                        'display': 'block'
+                                        }
                                     ),
                                 html.Div(
                                     [
                                         dbc.Label(
                                             id='img-label',
-                                            style={'height': '3rem'}),
+                                            style={'height': '2rem'}),
                                         dcc.Slider(
                                             id='img-slider',
                                             min=0,
