@@ -171,7 +171,8 @@ def toggle_warning_modal(warning_cause, warning_cause_exec, ok_n_clicks, is_open
     if 'ok-button.n_clicks' in changed_id:
         return False, ""
     if warning_cause == 'wrong_dataset':
-        return not is_open, "The dataset you have selected is not supported."
+        return False, ""
+        # return not is_open, "The dataset you have selected is not supported."
     if warning_cause_exec == 'no_row_selected':
         return not is_open, "Please select a trained model from the List of Jobs."
     if warning_cause_exec == 'no_dataset':
