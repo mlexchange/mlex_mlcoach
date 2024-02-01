@@ -43,34 +43,27 @@ def generate_loss_plot(log, start):
         return go.Figure(go.Scatter(x=[], y=[]))
 
 
-def get_class_prob(log, start, filename):
+def get_class_prob(probs):
     '''
     Generate plot of probabilities per class
     Args:
-        log:    job logs with the list of probabilities per file
-        start:  index where the list of loss values start
+        prob:L  probabilities per class
     Returns:
         plot of probabilities per class
     '''
-    end = log.find('Prediction process completed')
-    if end == -1:
-        end = len(log)
-    log = log[start:end]
-    try:
-        df = pd.read_csv(StringIO(log.replace('\n\n', '\n')), sep=',')
-        res = df.loc[df['filename'] == filename]    # search results for the selected file
-        if res.shape[0]>1:
-            res = res.iloc[[0]]
-        fig = px.bar(res.iloc[: , 1:])
-        fig.update_layout(yaxis_title="probability", margin=dict(l=20, r=20, t=20, b=20))
-        fig.update_xaxes(showgrid=False,
-                         visible=False,
-                         showticklabels=False,
-                         zeroline=False)
-        return fig
-    except Exception as err:
-        print(err)
-        return go.Figure(go.Scatter(x=[], y=[]))
+    fig = px.bar(probs)
+    fig.update_layout(
+        yaxis_title="probability",
+        legend_title_text="Labels",
+        margin=dict(l=20, r=20, t=20, b=20)
+        )
+    fig.update_xaxes(
+        showgrid=False,
+        visible=False,
+        showticklabels=False,
+        zeroline=False
+        )
+    return fig
 
 
 def plot_figure(image=None):
