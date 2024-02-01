@@ -9,11 +9,31 @@ from callbacks.display import refresh_image, refresh_results, toggle_warning_mod
 from callbacks.download import toggle_storage_modal, disable_download
 from callbacks.load_labels import load_from_splash_modal
 from callbacks.execute import execute
-from callbacks.table import update_table, delete_row
+from callbacks.table import update_table, delete_row, open_job_modal
 from dash_component_editor import JSONParameterEditor
 from utils.job_utils import MlexJob
 from utils.data_utils import prepare_directories, get_input_params
 from utils.model_utils import get_gui_components, get_model_content
+
+
+app.clientside_callback(
+    """
+    function(n) {          
+        if (typeof Intl === 'object' && typeof Intl.DateTimeFormat === 'function') {
+            const dtf = Intl.DateTimeFormat();
+            if (typeof dtf === 'object' && typeof dtf.resolvedOptions === 'function') {
+                const ro = dtf.resolvedOptions();
+                if (typeof ro === 'object' && typeof ro.timeZone === 'string') {
+                    return ro.timeZone;
+                }
+            }
+        }
+        return 'Timezone information not available';
+    }
+    """,
+    Output('timezone-browser', 'value'),
+    Input('interval', 'n_intervals'),
+)
 
 
 @app.callback(
@@ -42,9 +62,7 @@ def load_parameters(model_selection, action_selection):
 
 @app.long_callback(
     Output("download-out", "data"),
-
     Input("download-button", "n_clicks"),
-    
     State("jobs-table", "data"),
     State("jobs-table", "selected_rows"),
     manager=long_callback_manager,
@@ -71,9 +89,7 @@ def save_results(download, job_data, row):
 
 @app.long_callback(
     Output("job-alert-confirm", "is_open"),
-
     Input("submit", "n_clicks"),
-
     State("app-parameters", "children"),
     State("num-cpus", "value"),
     State("num-gpus", "value"),
@@ -85,6 +101,8 @@ def save_results(download, job_data, row):
     State({'base_id': 'file-manager', 'name': 'project-id'}, 'data'),
     State("event-id", "value"),
     State("model-selection", "value"),
+    State({'base_id': 'file-manager', 'name': 'log-toggle'}, 'on'),
+    State('img-labeled-indx', 'options'),
     running=[
         (Output("job-alert", "is_open"), "True", "False")
     ],
@@ -92,7 +110,7 @@ def save_results(download, job_data, row):
     prevent_initial_call=True
 )
 def submit_ml_job(submit, children, num_cpus, num_gpus, action_selection, job_data, row, file_paths,
-            model_name, project_id, event_id, model_id):
+                  model_name, project_id, event_id, model_id, log, labeled_dropdown):
     '''
     This callback submits a job request to the compute service according to the selected action & model
     Args:
@@ -108,22 +126,34 @@ def submit_ml_job(submit, children, num_cpus, num_gpus, action_selection, job_da
         project_id:         Data project id
         event_id:           Tagging event id for version control of tags
         model_id:           UID of model in content registry
+        log:                Log toggle
+        labeled_dropdown:   Indexes of the labeled images in this data set
     Returns:
         open the alert indicating that the job was submitted
     '''
-    data_project = DataProject()
-    data_project.init_from_dict(file_paths)
+    # Get model information from content registry
     model_uri, [train_cmd, prediction_cmd] = get_model_content(model_id)
-    experiment_id, out_path, data_info = prepare_directories(USER, data_project, project_id)
+
+    # Get model parameters
     input_params = get_input_params(children)
+    input_params['log'] = log
+
     kwargs = {}
+    data_project = DataProject()
+    data_project.project_id = project_id
+    data_project.init_from_dict(file_paths)
+
     if action_selection == 'train_model':
+        experiment_id, out_path, data_info = prepare_directories(USER, data_project, subset=labeled_dropdown)
         command = f"{train_cmd} -d {data_info} -o {out_path} -e {event_id}"
     else:
+        experiment_id, out_path, data_info = prepare_directories(USER, data_project, train=False)
         training_exp_id = job_data[row[0]]['experiment_id']
         model_path = pathlib.Path('/app/work/data/mlexchange_store/{}/{}'.format(USER, training_exp_id))
         command = f"{prediction_cmd} -d {data_info} -m {model_path} -o {out_path}"
         kwargs = {'train_params': job_data[row[0]]['parameters']}
+    
+    # Define MLExjob
     job = MlexJob(
         service_type='backend',
         description=model_name,
@@ -141,6 +171,8 @@ def submit_ml_job(submit, children, num_cpus, num_gpus, action_selection, job_da
                 }
             }
         )
+    
+    # Submit job
     job.submit(USER, num_cpus, num_gpus)
     return True
 
