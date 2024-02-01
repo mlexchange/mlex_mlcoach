@@ -4,7 +4,7 @@ import uuid
 import pandas as pd
 
 
-def prepare_directories(user_id, data_project, project_id, pattern = r'[/\\?%*:|"<>]'):
+def prepare_directories(user_id, data_project, subset=None, train=True, pattern = r'[/\\?%*:|"<>]'):
     '''
     Prepare data directories that host experiment results and data movements processes for tiled
     If data is served through tiled, a local copy will be made for ML training and inference 
@@ -12,7 +12,8 @@ def prepare_directories(user_id, data_project, project_id, pattern = r'[/\\?%*:|
     Args:
         user_id:        User ID
         data_project:   List of data sets in the application
-        project_id:     Current project ID
+        subset:         List of indexes of data sets to be used for training
+        train:          Flag to indicate if the data is used for training or inference
         pattern:        List of patterns to remove from data set uri
     Returns:
         experiment_id:  ML experiment ID
@@ -23,25 +24,16 @@ def prepare_directories(user_id, data_project, project_id, pattern = r'[/\\?%*:|
     experiment_id = str(uuid.uuid4())
     out_path = pathlib.Path('data/mlexchange_store/{}/{}'.format(user_id, experiment_id))
     out_path.mkdir(parents=True, exist_ok=True)
-    uri_list = []
-    uid_list = []
-    for dataset in data_project.data:
-        uri_list.append(dataset.uri)
-        uid_list.append(str(uuid.uuid4()))
-    data_info = pd.DataFrame({'uri': uri_list})
-    if data_project.data[0].type == 'tiled':
-        data_info['type'] = ['tiled']*len(data_project.data)
-        cleaned_project_id = re.sub(pattern, '_', project_id)               # clean project_id
-        local_path = pathlib.Path(f'data/tiled_local_copy/{cleaned_project_id}')
-        if not local_path.exists():
-            data_info['local_uri'] = [f'{local_path}/{uid}.tif' for uid in uid_list]
-            local_path.mkdir(parents=True)
-            data_project.tiled_to_local_project(project_id, data_info['local_uri'])
-            data_info.to_parquet(f'{local_path}/data_info.parquet', engine='pyarrow')
-        else:
-            data_info = pd.read_parquet(f'{local_path}/data_info.parquet', engine='pyarrow')
+    if data_project.data[0].type == 'tiled' and train:
+        data_info = data_project.tiled_to_local_project(subset=subset)
     else:
-        data_info['type'] = ['file']*len(data_project.data)
+        uri_list = []
+        data_type = []
+        for dataset in data_project.data:
+            uri_list.append(dataset.uri)
+            data_type.append(dataset.type)
+        data_info = pd.DataFrame({'uri': uri_list})
+        data_info['type'] = data_type
     data_info.to_parquet(f'{out_path}/data_info.parquet', engine='pyarrow')
     return experiment_id, out_path, f'{out_path}/data_info.parquet'
 
