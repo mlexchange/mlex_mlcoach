@@ -4,11 +4,10 @@ import dash_bootstrap_components as dbc
 from utils.plot_utils import plot_figure
 
 
-def main_display(loss_plot, job_table):
+def main_display(job_table):
     '''
     Creates the dash components within the main display in the app
     Args:
-        loss_plot:          Loss plot of trainin process
         job_table:          Job table
     '''
     main_display = html.Div([
@@ -46,19 +45,29 @@ def main_display(loss_plot, job_table):
                                                 "always_visible": True
                                                 }
                                             ),
-                                        dbc.Label('List of labeled images:'),
-                                        dcc.Dropdown(
-                                            id='img-labeled-indx',
-                                            options=[]
+                                        dbc.Row([
+                                            dbc.Col(
+                                                dbc.Label(
+                                                    'List of labeled images:',
+                                                    style={'height': '100%', 'display': 'flex', 'align-items': 'center'}
+                                                    ),
                                             ),
+                                            dbc.Col(
+                                                dcc.Dropdown(
+                                                    id='img-labeled-indx',
+                                                    options=[]
+                                                    ),
+                                            )
+                                        ])
                                     ],
                                     style={'vertical-align': 'bottom'}
                                     )
                                 ],
-                            style={'height': '25rem', 'vertical-align': 'bottom'}
+                            style={'height': '40vh', 'vertical-align': 'bottom'}
                             ),
                         ]
-                    )
+                    ),
+                width=5
                 ),
             dbc.Col(
                 dbc.Card(
@@ -69,17 +78,17 @@ def main_display(loss_plot, job_table):
                             children = [
                                 dcc.Graph(
                                     id='results-plot',
-                                    style={'display': 'none'})
+                                    style={'display': 'none'}
+                                    )
                             ],
-                            style={'height': '25rem'}
+                            style={'height': '40vh'}
                             )
                         ]
                     ),
                 width=7
                 )
-            ]
+            ],
         ),
-        html.Div(loss_plot),
         job_table,
         dcc.Interval(id='interval', interval=5 * 1000, n_intervals=0),
     ])
