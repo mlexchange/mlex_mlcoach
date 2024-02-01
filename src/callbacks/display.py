@@ -1,4 +1,4 @@
-import pathlib
+import pathlib, os
 
 from dash import Input, Output, State, callback
 import dash
@@ -9,6 +9,7 @@ import requests
 from app_layout import USER, TILED_KEY, SPLASH_URL
 from file_manager.data_project import DataProject
 from utils.plot_utils import plot_figure, get_class_prob, generate_loss_plot
+from utils.job_utils import TableJob
 
 
 @callback(
@@ -17,18 +18,17 @@ from utils.plot_utils import plot_figure, get_class_prob, generate_loss_plot
     Output('img-slider', 'value'),
     Output('img-label', 'children'),
     Output('warning-cause', 'data'),
-
     Input({'base_id': 'file-manager', 'name': 'docker-file-paths'}, 'data'),
     Input('img-slider', 'value'),
     Input('img-labeled-indx', 'value'),
     Input('jobs-table', 'selected_rows'),
     Input('event-id', 'value'),
-
+    Input({'base_id': 'file-manager', 'name': 'log-toggle'}, 'on'),
     State('jobs-table', 'data'),
     State({'base_id': 'file-manager', 'name': 'project-id'}, 'data'),
     prevent_initial_call=True
 )
-def refresh_image(file_paths, img_ind, labeled_img_ind, row, event_id, data_table, project_id):
+def refresh_image(file_paths, img_ind, labeled_img_ind, row, event_id, log, data_table, project_id):
     '''
     This callback updates the image in the display
     Args:
@@ -37,6 +37,7 @@ def refresh_image(file_paths, img_ind, labeled_img_ind, row, event_id, data_tabl
         labeled_img_ind:    Indexes of the labeled images in this data set
         row:                Selected job (model)
         event_id:           Tagging event id for version control of tags
+        log:                Log toggle
         data_table:         Data in table of jobs
         project_id:         Data project id
     Returns:
@@ -63,7 +64,7 @@ def refresh_image(file_paths, img_ind, labeled_img_ind, row, event_id, data_tabl
             slider_max = len(data_project.data) - 1
             if img_ind > slider_max:
                 img_ind = 0
-            fig, uri = data_project.data[img_ind].read_data()
+            fig, uri = data_project.data[img_ind].read_data(log=log)
             label = 'Not labeled'
             if event_id is not None:
                 datasets = requests.get(f'{SPLASH_URL}/datasets',
@@ -87,22 +88,18 @@ def refresh_image(file_paths, img_ind, labeled_img_ind, row, event_id, data_tabl
 @callback(
     Output('results-plot', 'figure'),
     Output('results-plot', 'style'),
-
     Input('img-slider', 'value'),
-    Input('img-labeled-indx', 'value'),
     Input('jobs-table', 'selected_rows'),
     Input('interval', 'n_intervals'),
-
     State('jobs-table', 'data'),
     State('results-plot', 'figure'),
     prevent_initial_call=True
 )
-def refresh_results(img_ind, labeled_img_ind, row, interval, data_table, current_fig):
+def refresh_results(img_ind, row, interval, data_table, current_fig):
     '''
     This callback updates the results in the display
     Args:
         img_ind:            Index of image according to the slider value
-        labeled_img_ind:    Indexes of the labeled images in this data set
         row:                Selected job (model) 
         data_table:         Data in table of jobs
         current_fig:        Current loss plot
@@ -111,37 +108,46 @@ def refresh_results(img_ind, labeled_img_ind, row, interval, data_table, current
         results_style:      Modify visibility of output results
     '''
     changed_id = dash.callback_context.triggered[-1]['prop_id']
-    if 'img-labeled-indx' in changed_id and labeled_img_ind is not None:
-        img_ind = labeled_img_ind
-    data_project = DataProject()
     results_fig = dash.no_update
     results_style_fig = dash.no_update
+
     if row is not None and len(row)>0 and row[0]<len(data_table):
-        log = data_table[row[0]]["job_logs"]
-        if 'interval' not in changed_id and data_table[row[0]]['job_type'] == 'prediction_model' \
-            and log is not None:
+        # Get the job logs
+        job_data = TableJob.get_job(USER, 'mlcoach', job_id=data_table[row[0]]['job_id'])
+        log = job_data["logs"]
+
+        # Plot classification probabilities per class
+        if 'interval' not in changed_id and data_table[row[0]]['job_type'] == 'prediction_model':
             job_id = data_table[row[0]]['experiment_id']
             data_path = pathlib.Path('data/mlexchange_store/{}/{}'.format(USER, job_id))
-            data_info = pd.read_parquet(f'{data_path}/data_info.parquet', engine='pyarrow')
-            data_project.init_from_dict(data_info.to_dict('records'), api_key=TILED_KEY)
-            start = log.find('filename')
-            if start > -1 and len(log) > start + 10 and len(data_project.data)>img_ind:
-                results_fig = get_class_prob(log, start, data_project.data[img_ind].uri)
-                results_style_fig = {'width': '100%', 'height': '23rem', 'display': 'block'}
+
+            # Check if the results file exists
+            if os.path.exists(f'{data_path}/results.parquet'):
+                # Load the data information
+                data_project = DataProject()
+                df_prob = pd.read_parquet(f'{data_path}/results.parquet')
+                data_info = pd.read_parquet(f'{data_path}/data_info.parquet', engine='pyarrow')
+                data_project.init_from_dict(data_info.to_dict('records'), api_key=TILED_KEY)
+
+                # Get the probabilities for the selected image
+                probs = df_prob.loc[data_project.data[img_ind].uri]
+                probs = probs.to_frame().T.reset_index(drop=True)
+                results_fig = get_class_prob(probs)
+                results_style_fig = {'width': '100%', 'height': '100%', 'display': 'block'}
+        
+        # Plot the loss plot
         elif log and data_table[row[0]]['job_type'] == 'train_model':
             if data_table[row[0]]['job_type'] == 'train_model':
                 start = log.find('epoch')
                 if start > -1 and len(log) > start + 5:
                     results_fig = generate_loss_plot(log, start)
-                    results_style_fig = {'width': '100%', 'height': '23rem', 'display': 'block'}
+                    results_style_fig = {'width': '100%', 'height': '100%', 'display': 'block'}
+
         # Do not update the plot unless loss plot changed
-        if current_fig and results_fig!=dash.no_update:
-            try:
-                if current_fig['data'][0]['x'] == list(results_fig['data'][0]['x']):
-                    results_fig = dash.no_update
-                    results_style_fig = dash.no_update
-            except Exception as e:
-                print(e)
+        if current_fig and results_fig!=dash.no_update and current_fig['data'][0]['x'] == list(results_fig['data'][0]['x']):
+            results_fig = dash.no_update
+            results_style_fig = dash.no_update
+
         return results_fig, results_style_fig     
     else:
         raise PreventUpdate
@@ -150,11 +156,9 @@ def refresh_results(img_ind, labeled_img_ind, row, interval, data_table, current
 @callback(
     Output('warning-modal', 'is_open'),
     Output('warning-msg', 'children'),
-
     Input('warning-cause', 'data'),
     Input('warning-cause-execute', 'data'),
     Input('ok-button', 'n_clicks'),
-
     State('warning-modal', 'is_open'),
     prevent_initial_call=True
 )
