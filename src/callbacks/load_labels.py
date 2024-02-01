@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import pytz
 
 from dash import Input, Output, State, callback
 import dash
@@ -11,15 +12,14 @@ from app_layout import SPLASH_URL
 @callback(
     Output('event-id', 'options'),
     Output('modal-load-splash', 'is_open'),
-
     Input('button-load-splash', 'n_clicks'),
     Input('confirm-load-splash', 'n_clicks'),
     Input({'base_id': 'file-manager', 'name': 'project-id'}, 'data'),
-
     State({'base_id': 'file-manager', 'name': 'docker-file-paths'}, 'data'),
+    State('timezone-browser', 'value'),
     prevent_initial_call=True
 )
-def load_from_splash_modal(load_n_click, confirm_load, project_id, file_paths):
+def load_from_splash_modal(load_n_click, confirm_load, project_id, file_paths, timezone_browser):
     '''
     Load labels from splash-ml associated with the project_id
     Args:
@@ -27,6 +27,7 @@ def load_from_splash_modal(load_n_click, confirm_load, project_id, file_paths):
         confirm_load:       Number of clicks in confim button within loading from splash-ml modal
         project_id:         Data project id
         file_paths:         Data project information
+        timezone_browser:   Timezone of the browser
     Returns:
         event_id:           Available tagging event IDs associated with the current data project
         modal_load_splash:  True/False to open/close loading from splash-ml modal
@@ -37,33 +38,34 @@ def load_from_splash_modal(load_n_click, confirm_load, project_id, file_paths):
     # If unconfirmed, retrieve the tagging event IDs associated with the current data project
     data_project = DataProject()
     data_project.init_from_dict(file_paths)
-    num_imgs = len(data_project.data)
-    response = requests.post(f'{SPLASH_URL}/datasets/search', 
-                             params={'page[limit]': num_imgs}, 
-                             json={'project': project_id})
-    event_ids = []
-    for dataset in response.json():
-        for tag in dataset['tags']:
-            if tag['event_id'] not in event_ids:
-                event_ids.append(tag['event_id'])
-    # Present the tagging event options with their corresponding tagger id and runtime
-    options = []
-    for event_id in event_ids:
-        tagging_event = requests.get(f'{SPLASH_URL}/events/{event_id}').json()
-        tagging_event_time = datetime.strptime(tagging_event['run_time'], "%Y-%m-%dT%H:%M:%S.%f")
-        tagging_event_time = tagging_event_time.replace(tzinfo=timezone.utc).astimezone(tz=None)\
-            .strftime("%d-%m-%Y %H:%M:%S")
-        options.append({'label': f"Tagger ID: {tagging_event['tagger_id']}, \
-                                 modified: {tagging_event_time}",
-                        'value' : event_id})
-    return options, True
+    if len(data_project.data) > 0:
+        num_imgs = len(data_project.data)
+        response = requests.post(f'{SPLASH_URL}/datasets/search', 
+                                params={'page[limit]': num_imgs}, 
+                                json={'project': project_id})
+        event_ids = []
+        for dataset in response.json():
+            for tag in dataset['tags']:
+                if tag['event_id'] not in event_ids:
+                    event_ids.append(tag['event_id'])
+        # Present the tagging event options with their corresponding tagger id and runtime
+        options = []
+        timezone_browser = pytz.timezone(timezone_browser)
+        for event_id in event_ids[::-1]:
+            tagging_event = requests.get(f'{SPLASH_URL}/events/{event_id}').json()
+            tagging_event_time = datetime.strptime(tagging_event['run_time'], "%Y-%m-%dT%H:%M:%S.%f")
+            tagging_event_time = tagging_event_time.replace(tzinfo=timezone.utc).astimezone(timezone_browser).strftime("%d-%m-%Y %H:%M:%S")
+            options.append({'label': f"Tagger ID: {tagging_event['tagger_id']}, \
+                                    modified: {tagging_event_time}",
+                            'value' : event_id})
+        return options, True
+    else:
+        return dash.no_update, dash.no_update
 
 
 @callback(
     Output('img-labeled-indx', 'options'),
-
     Input('confirm-load-splash', 'n_clicks'),
-
     State({'base_id': 'file-manager', 'name': 'docker-file-paths'}, 'data'),
     State({'base_id': 'file-manager', 'name': 'project-id'}, 'data'),
     State('event-id', 'value'),
