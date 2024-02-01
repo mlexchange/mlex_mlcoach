@@ -11,7 +11,6 @@ import diskcache
 from file_manager.main import FileManager
 from components.header import header
 from components.job_table import job_table
-from components.loss import loss_plot
 from components.main_display import main_display
 from components.resources_setup import resources_setup
 from components.sidebar import sidebar
@@ -63,7 +62,7 @@ app.layout = html.Div(
                     [dbc.Col(sidebar(dash_file_explorer.file_explorer, get_model_list(), 
                                      TableJob.get_counter(USER)), 
                              width=4),
-                     dbc.Col(main_display(loss_plot(), job_table()), 
+                     dbc.Col(main_display(job_table()), 
                              width=8),
                      html.Div(id='dummy-output')]
                 ),
