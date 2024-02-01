@@ -12,85 +12,102 @@ def sidebar(file_explorer, models, counters):
                             job description/name is added
     '''
     sidebar = [
-        dbc.Card(
+        dbc.Accordion(
             id="sidebar",
             children=[
-                dbc.CardHeader("Exploring Data with Machine Learning"),
-                dbc.CardBody([
-                    dbc.Row([
-                        dbc.Label('Data'),
-                        file_explorer
-                    ]),
-                    dbc.Button(
-                        'Load Labels from Splash-ML', 
-                        id='button-load-splash',
-                        color='primary', 
-                        style={
-                            'width': '100%',
-                            'margin-top': '10px'
-                            }
-                        ),
-                    dbc.Modal([
-                        dbc.ModalHeader(
-                            dbc.ModalTitle("Labeling versions")
+                dbc.AccordionItem(
+                    title="Data selection",
+                    children=[
+                        file_explorer,
+                        dbc.Button(
+                            'Load Labels from Splash-ML', 
+                            id='button-load-splash',
+                            color='primary', 
+                            style={
+                                'width': '100%',
+                                'margin-top': '10px'
+                                }
                             ),
-                        dbc.ModalBody(
-                            dcc.Dropdown(id='event-id')
+                        dbc.Modal([
+                            dbc.ModalHeader(
+                                dbc.ModalTitle("Labeling versions")
+                                ),
+                            dbc.ModalBody([
+                                dcc.Input(id='timezone-browser', style={'display': 'none'}),
+                                dcc.Dropdown(id='event-id')
+                                ]),
+                            dbc.ModalFooter([
+                                    dbc.Button(
+                                        "LOAD", 
+                                        id="confirm-load-splash", 
+                                        color='primary', 
+                                        outline=False,
+                                        className="ms-auto", 
+                                        n_clicks=0
+                                        )
+                                    ]
+                                ),
+                            ], 
+                            id="modal-load-splash",
+                            is_open=False),
+                    ]
+                ),
+                dbc.AccordionItem(
+                    title="Model configuration",
+                    children=[
+                        dbc.Row([
+                            dbc.Col(
+                                dbc.Label(
+                                    'Action',
+                                    style={'height': '100%', 'display': 'flex', 'align-items': 'center'}
+                                ),
+                                width=2
                             ),
-                        dbc.ModalFooter([
-                                dbc.Button(
-                                    "LOAD", 
-                                    id="confirm-load-splash", 
-                                    color='primary', 
-                                    outline=False,
-                                    className="ms-auto", 
-                                    n_clicks=0
-                                    )
-                                ]
-                            ),
-                        ], 
-                        id="modal-load-splash",
-                        is_open=False),
-                    dbc.Row([
-                        dbc.Label('Action',
-                                  style={'margin-top': '10px'}),
-                        dcc.Dropdown(
-                            id='action',
-                            options=[
-                                {'label': 'Model Training', 'value': 'train_model'},
-                                {'label': 'Test Prediction using Model', 'value': 'prediction_model'},
-                            ],
-                            value='train_model')
-                    ]),
-                    dbc.Row([
-                        dbc.Label(
-                            'Model',
-                            style={'margin-top': '10px'}
-                            ),
-                        dcc.Dropdown(
-                            id='model-selection',
-                            options=models,
-                            value=models[0]['value'])
-                    ]),
-                    dbc.Button(
-                        'Execute',
-                        id='execute',
-                        n_clicks=0,
-                        style={
-                            'width': '100%',
-                            'margin-left': '0px',
-                            'margin-top': '10px'
-                            }
-                        )
-                ])
-            ]
-        ),
-        dbc.Card(
-            children=[
-                dbc.CardHeader("Parameters"),
-                dbc.CardBody([
-                    html.Div(id='app-parameters')
-                    ])
+                            dbc.Col(
+                                dcc.Dropdown(
+                                    id='action',
+                                    options=[
+                                        {'label': 'Train', 'value': 'train_model'},
+                                        {'label': 'Prediction', 'value': 'prediction_model'},
+                                    ],
+                                    value='train_model'),
+                            width=10)
+                        ], className="mb-3"),
+                        dbc.Row([
+                            dbc.Col(
+                                dbc.Label(
+                                    'Model',
+                                    style={'height': '100%', 'display': 'flex', 'align-items': 'center'}
+                                ),
+                            width=2),
+                            dbc.Col(
+                                dcc.Dropdown(
+                                    id='model-selection',
+                                    options=models,
+                                    value=models[0]['value']),
+                            width=10)
+                        ], className="mb-3",),
+                        dbc.Card([
+                            dbc.CardBody(
+                                id='app-parameters',
+                                style={
+                                    'overflowY': 'scroll',
+                                    'height': '58vh',  # Adjust as needed
+                                }
+                                ),
+                        ]),
+                        dbc.Button(
+                            'Execute',
+                            id='execute',
+                            n_clicks=0,
+                            style={
+                                'width': '100%',
+                                'margin-left': '0px',
+                                'margin-top': '10px'
+                                }
+                            )
+                    ]
+                )
             ]
         ),
         dbc.Modal(
