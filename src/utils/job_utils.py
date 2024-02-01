@@ -6,16 +6,13 @@ import urllib
 COMPUTE_URL = str(os.environ['MLEX_COMPUTE_URL'])
 
 class TableJob:
-    def __init__(self, job_id, job_name, job_type, job_status, job_params, experiment_id, dataset,
-                 job_logs):
+    def __init__(self, job_id, job_name, job_type, job_status, job_params, experiment_id):
         self.job_id=job_id
         self.name=job_name
         self.job_type=job_type
         self.status=job_status
         self.parameters=job_params
         self.experiment_id=experiment_id
-        self.dataset=dataset
-        self.job_logs=job_logs
         pass
     
     @staticmethod
@@ -31,12 +28,10 @@ class TableJob:
             compute_job.status['state'], 
             str(params), 
             compute_job.job_kwargs['kwargs']['experiment_id'],
-            compute_job.job_kwargs['kwargs']['dataset'],
-            compute_job.logs
             )
     
     @staticmethod
-    def get_job(user, mlex_app, job_type=None, deploy_location=None):
+    def get_job(user, mlex_app, job_type=None, deploy_location=None, job_id=None):
         '''
         Queries the job from the computing database
         Args:
@@ -48,15 +43,18 @@ class TableJob:
             list of jobs that match the query
         '''
         url = f'{COMPUTE_URL}/jobs?'
-        if user:
-            url += ('&user=' + user)
-        if mlex_app:
-            url += ('&mlex_app=' + mlex_app)
-        if job_type:
-            url += ('&job_type=' + job_type)
-        if deploy_location:
-            url += ('&deploy_location=' + deploy_location)
-        response = urllib.request.urlopen(url)
+        if job_id:
+            response = urllib.request.urlopen(f'{url[:-1]}/{job_id}')
+        else:
+            if user:
+                url += ('&user=' + user)
+            if mlex_app:
+                url += ('&mlex_app=' + mlex_app)
+            if job_type:
+                url += ('&job_type=' + job_type)
+            if deploy_location:
+                url += ('&deploy_location=' + deploy_location)
+            response = urllib.request.urlopen(url)
         data = json.loads(response.read())
         return data
     

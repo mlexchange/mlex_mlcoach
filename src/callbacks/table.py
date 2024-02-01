@@ -7,61 +7,67 @@ from utils.job_utils import TableJob
 
 @callback(
     Output('jobs-table', 'data'),
-    Output('log-modal', 'is_open'),
-    Output('log-display', 'children'),
-    Output('jobs-table', 'active_cell'),
-
     Input('interval', 'n_intervals'),
-    Input('jobs-table', 'active_cell'),
-    Input('modal-close', 'n_clicks'),
-
     State('jobs-table', 'data'),
-    prevent_initial_call=True
 )
-def update_table(n, active_cell, close_clicks, current_job_table):
+def update_table(n, current_job_table):
     '''
-    This callback updates the job table, loss plot, and results according to the job status in the 
-    compute service.
+    This callback updates the job table
     Args:
         n:                  Time intervals that trigger this callback
-        active_cell:        Selected cell in jobs table
-        close_clicks:       Close modal with close-up details of selected cell
         current_job_table:  Current job table
     Returns:
         jobs-table:         Updates the job table
-        show-plot:          Shows/hides the loss plot
-        loss-plot:          Updates the loss plot according to the job status (logs)
-        active_cell:        Selected cell in jobs table
     '''
-    changed_id = [p['prop_id'] for p in dash.callback_context.triggered][0]
-    if 'modal-close.n_clicks' in changed_id:
-        return dash.no_update, False, dash.no_update, None
     job_list = TableJob.get_job(USER, 'mlcoach')
     data_table = []
     if job_list is not None:
         for job in job_list:
             simple_job = TableJob.compute_job_to_table_job(job)
             data_table.insert(0, simple_job.__dict__)
-    is_open = dash.no_update
-    log_display = dash.no_update
-    if active_cell:
-        row_log = active_cell["row"]
-        col_log = active_cell["column_id"]
-        if col_log == 'job_logs':       # show job logs
-            is_open = True
-            log_display = dcc.Textarea(value=data_table[row_log]["job_logs"],
-                                       style={'width': '100%', 
-                                              'height': '30rem', 
-                                              'font-family':'monospace'})
-        if col_log == 'parameters':     # show job parameters
-            is_open = True
-            log_display = dcc.Textarea(value=str(job['job_kwargs']['kwargs']['params']),
-                                       style={'width': '100%', 
-                                              'height': '30rem', 
-                                              'font-family': 'monospace'})
     if data_table == current_job_table:
         data_table = dash.no_update
-    return data_table, is_open, log_display, None
+    return data_table
+
+
+@callback(
+    Output('info-modal', 'is_open'),
+    Output('info-display', 'children'),
+    Input('show-info', 'n_clicks'),
+    Input('modal-close', 'n_clicks'),
+    State('jobs-table', 'data'),
+    State('info-modal', 'is_open'),
+    State('jobs-table', 'selected_rows'),
+)
+def open_job_modal(n_clicks, close_clicks, current_job_table, is_open, rows):
+    '''
+    This callback updates shows the job logs and parameters
+    Args:
+        n_clicks:           Number of clicks in "show details" button
+        close_clicks:       Close modal with close-up details of selected cell
+        current_job_table:  Current job table
+        is_open:            Open/close modal state
+        rows:               Selected rows in jobs table
+    Returns:
+        info-modal:         Open/closes the modal
+        info-display:       Display the job logs and parameters
+    '''
+    if not is_open and rows is not None and len(rows) > 0:
+        job_id = current_job_table[rows[0]]['job_id']
+        job_data = TableJob.get_job(USER, 'mlcoach', job_id=job_id)
+        logs = job_data['logs']
+        params = job_data['job_kwargs']['kwargs']['params']
+        info_display = dcc.Textarea(
+            value= f'Parameters: {params}\n\nLogs: {logs}',
+            style={
+                'width': '100%', 
+                'height': '30rem', 
+                'font-family':'monospace'
+                }
+            )
+        return True, info_display
+    else:
+        return False, dash.no_update
 
 
 @callback(
