@@ -9,7 +9,7 @@ from dash import Input, Output, State, callback
 from dash.exceptions import PreventUpdate
 from file_manager.data_project import DataProject
 
-from app_layout import SPLASH_URL, TILED_KEY, USER
+from app_layout import DATA_DIR, SPLASH_URL, USER
 from utils.job_utils import TableJob
 from utils.plot_utils import generate_loss_plot, get_class_prob, plot_figure
 
@@ -43,14 +43,14 @@ def refresh_image(
         img-output:         Output figure
     """
     # Get selected job type
-    if row and len(row) > 0:
+    if row and len(row) > 0 and row[0] < len(data_table):
         selected_job_type = data_table[row[0]]["job_type"]
     else:
         selected_job_type = None
 
     if selected_job_type == "prediction_model":
         job_id = data_table[row[0]]["experiment_id"]
-        data_path = pathlib.Path("data/mlex_store/{}/{}".format(USER, job_id))
+        data_path = pathlib.Path(f"{DATA_DIR}/mlex_store/{USER}/{job_id}")
 
         with open(f"{data_path}/.file_manager_vars.pkl", "rb") as file:
             data_project_dict = pickle.load(file)
@@ -95,7 +95,7 @@ def update_slider_boundaries_prediction(
         img-slider:         Slider index
     """
     # Get selected job type
-    if row and len(row) > 0:
+    if row and len(row) > 0 and row[0] < len(data_table):
         selected_job_type = data_table[row[0]]["job_type"]
     else:
         selected_job_type = None
@@ -103,7 +103,7 @@ def update_slider_boundaries_prediction(
     # If selected job type is train_model or tune_model
     if selected_job_type == "prediction_model":
         job_id = data_table[row[0]]["experiment_id"]
-        data_path = pathlib.Path("data/mlex_store/{}/{}".format(USER, job_id))
+        data_path = pathlib.Path(f"{DATA_DIR}/mlex_store/{USER}/{job_id}")
 
         with open(f"{data_path}/.file_manager_vars.pkl", "rb") as file:
             data_project_dict = pickle.load(file)
@@ -236,9 +236,13 @@ def refresh_results(img_ind, row, interval, data_table, current_fig):
 
     if row is not None and len(row) > 0 and row[0] < len(data_table):
         # Get the job logs
-        job_data = TableJob.get_job(
-            USER, "mlcoach", job_id=data_table[row[0]]["job_id"]
-        )
+        try:
+            job_data = TableJob.get_job(
+                USER, "mlcoach", job_id=data_table[row[0]]["job_id"]
+            )
+        except Exception as e:
+            print(e, flush=True)
+            raise PreventUpdate
         log = job_data["logs"]
 
         # Plot classification probabilities per class
@@ -247,23 +251,14 @@ def refresh_results(img_ind, row, interval, data_table, current_fig):
             and data_table[row[0]]["job_type"] == "prediction_model"
         ):
             job_id = data_table[row[0]]["experiment_id"]
-            data_path = pathlib.Path("data/mlexchange_store/{}/{}".format(USER, job_id))
+            data_path = pathlib.Path(f"{DATA_DIR}/mlex_store/{USER}/{job_id}")
 
             # Check if the results file exists
             if os.path.exists(f"{data_path}/results.parquet"):
-                # Load the data information
-                data_project = DataProject()
                 df_prob = pd.read_parquet(f"{data_path}/results.parquet")
-                data_info = pd.read_parquet(
-                    f"{data_path}/data_info.parquet", engine="pyarrow"
-                )
-                data_project.init_from_dict(
-                    data_info.to_dict("records"), api_key=TILED_KEY
-                )
 
                 # Get the probabilities for the selected image
-                probs = df_prob.loc[data_project.data[img_ind].uri]
-                probs = probs.to_frame().T.reset_index(drop=True)
+                probs = df_prob.iloc[img_ind]
                 results_fig = get_class_prob(probs)
                 results_style_fig = {
                     "width": "100%",
@@ -274,9 +269,12 @@ def refresh_results(img_ind, row, interval, data_table, current_fig):
         # Plot the loss plot
         elif log and data_table[row[0]]["job_type"] == "train_model":
             if data_table[row[0]]["job_type"] == "train_model":
-                start = log.find("epoch")
-                if start > -1 and len(log) > start + 5:
-                    results_fig = generate_loss_plot(log, start)
+                job_id = data_table[row[0]]["experiment_id"]
+                loss_file_path = (
+                    f"{DATA_DIR}/mlex_store/{USER}/{job_id}/training_log.csv"
+                )
+                if os.path.exists(loss_file_path):
+                    results_fig = generate_loss_plot(loss_file_path)
                     results_style_fig = {
                         "width": "100%",
                         "height": "100%",

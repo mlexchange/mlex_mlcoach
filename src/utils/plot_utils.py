@@ -1,10 +1,4 @@
 import base64
-import sys
-
-if sys.version_info[0] < 3:
-    from StringIO import StringIO
-else:
-    from io import StringIO
 
 import numpy as np
 import pandas as pd
@@ -15,38 +9,29 @@ from PIL import Image
 from plotly.subplots import make_subplots
 
 
-def generate_loss_plot(log, start):
+def generate_loss_plot(loss_file_path):
     """
     Generate loss plot
     Args:
-        log:    job logs with the loss/accuracy per epoch
-        start:  index where the list of loss values start
+        loss_file_path:     Path to the loss file
     Returns:
         loss plot
     """
-    end = log.find("Train process completed")
-    if end == -1:
-        end = len(log)
-    log = log[start:end]
-    df = pd.read_csv(StringIO(log.replace("\n\n", "\n")), sep=",")
-    try:
-        fig = make_subplots(specs=[[{"secondary_y": True}]])
-        for col in list(df.columns)[1:]:
-            if "loss" in col:
-                fig.add_trace(
-                    go.Scatter(x=df["epoch"], y=df[col], name=col), secondary_y=False
-                )
-                fig.update_yaxes(title_text="loss", secondary_y=False)
-            else:
-                fig.add_trace(
-                    go.Scatter(x=df["epoch"], y=df[col], name=col), secondary_y=True
-                )
-                fig.update_yaxes(title_text="accuracy", secondary_y=True, range=[0, 1])
-        fig.update_layout(xaxis_title="epoch", margin=dict(l=20, r=20, t=20, b=20))
-        return fig
-    except Exception as e:
-        print(e)
-        return go.Figure(go.Scatter(x=[], y=[]))
+    df = pd.read_csv(loss_file_path)
+    df.set_index("epoch", inplace=True)
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
+    cols = list(df.columns)
+    for col in cols:
+        if "loss" in col:
+            fig.add_trace(
+                go.Scatter(x=df.index, y=df[col], name=col), secondary_y=False
+            )
+            fig.update_yaxes(title_text="loss", secondary_y=False)
+        else:
+            fig.add_trace(go.Scatter(x=df.index, y=df[col], name=col), secondary_y=True)
+            fig.update_yaxes(title_text="accuracy", secondary_y=True, range=[0, 1])
+    fig.update_layout(xaxis_title="epoch", margin=dict(l=20, r=20, t=20, b=20))
+    return fig
 
 
 def get_class_prob(probs):
@@ -57,6 +42,8 @@ def get_class_prob(probs):
     Returns:
         plot of probabilities per class
     """
+    probs.name = None
+    probs = probs.to_frame().T
     fig = px.bar(probs)
     fig.update_layout(
         yaxis_title="probability",

@@ -1,3 +1,4 @@
+import time
 from datetime import datetime, timezone
 
 import dash
@@ -40,18 +41,23 @@ def load_from_splash_modal(
     # If unconfirmed, retrieve the tagging event IDs associated with the current data project
     data_project = DataProject.from_dict(data_project_dict)
     if len(data_project.datasets) > 0:
+        start = time.time()
         num_imgs = data_project.datasets[-1].cumulative_data_count
         response = requests.post(
             f"{SPLASH_URL}/datasets/search",
             params={"page[limit]": num_imgs},
             json={"project": data_project.project_id},
         )
+        print(f"Time taken to fetch tagging events: {time.time() - start}", flush=True)
+        start = time.time()
         event_ids = []
         for dataset in response.json():
             for tag in dataset["tags"]:
                 if tag["event_id"] not in event_ids:
                     event_ids.append(tag["event_id"])
+        print(f"Time taken to fetch tagging events: {time.time() - start}", flush=True)
         # Present the tagging event options with their corresponding tagger id and runtime
+        start = time.time()
         options = []
         timezone_browser = pytz.timezone(timezone_browser)
         for event_id in event_ids[::-1]:
@@ -71,6 +77,7 @@ def load_from_splash_modal(
                     "value": event_id,
                 }
             )
+        print(f"Time taken to fetch tagging events: {time.time() - start}", flush=True)
         return options, True
     else:
         return dash.no_update, dash.no_update

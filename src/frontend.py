@@ -1,6 +1,9 @@
 import json
+import os
 import pathlib
+import pickle
 import shutil
+import tempfile
 from uuid import uuid4
 
 from dash import Input, Output, State, dcc
@@ -18,13 +21,16 @@ from callbacks.display import (  # noqa: F401
     update_slider_value,
 )
 from callbacks.download import disable_download, toggle_storage_modal  # noqa: F401
-from callbacks.execute import execute  # noqa: F401
+from callbacks.execute import close_resources_popup, execute  # noqa: F401
 from callbacks.load_labels import load_from_splash_modal  # noqa: F401
 from callbacks.table import delete_row, open_job_modal, update_table  # noqa: F401
 from dash_component_editor import JSONParameterEditor
 from utils.data_utils import get_input_params, prepare_directories
 from utils.job_utils import MlexJob
 from utils.model_utils import get_gui_components, get_model_content
+
+DIR_MOUNT = os.getenv("DIR_MOUNT", "/data")
+
 
 app.clientside_callback(
     """
@@ -91,11 +97,12 @@ def save_results(download, job_data, row):
     """
     if download and row:
         experiment_id = job_data[row[0]]["experiment_id"]
-        experiment_path = pathlib.Path(
-            "data/mlexchange_store/{}/{}".format(USER, experiment_id)
-        )
-        shutil.make_archive("/app/tmp/results", "zip", experiment_path)
-        return dcc.send_file("/app/tmp/results.zip")
+        experiment_path = pathlib.Path(f"{DATA_DIR}/mlex_store/{USER}/{experiment_id}")
+        with tempfile.TemporaryDirectory():
+            tmp_dir = tempfile.gettempdir()
+            archive_path = os.path.join(tmp_dir, "results")
+            shutil.make_archive(archive_path, "zip", experiment_path)
+        return dcc.send_file(f"{archive_path}.zip")
     else:
         return None
 
@@ -109,9 +116,8 @@ def save_results(download, job_data, row):
     State("action", "value"),
     State("jobs-table", "data"),
     State("jobs-table", "selected_rows"),
-    State({"base_id": "file-manager", "name": "docker-file-paths"}, "data"),
+    State({"base_id": "file-manager", "name": "data-project-dict"}, "data"),
     State("model-name", "value"),
-    State({"base_id": "file-manager", "name": "project-id"}, "data"),
     State("event-id", "value"),
     State("model-selection", "value"),
     State({"base_id": "file-manager", "name": "log-toggle"}, "on"),
@@ -128,9 +134,8 @@ def submit_ml_job(
     action_selection,
     job_data,
     row,
-    file_paths,
+    data_project_dict,
     model_name,
-    project_id,
     event_id,
     model_id,
     log,
@@ -146,9 +151,8 @@ def submit_ml_job(
         action_selection:   Action selected
         job_data:           Lists of jobs
         row:                Selected row (job)
-        file_paths:         Data project information
+        data_project_dict:  Data project dictionary
         model_name:         User-defined name for training or prediction model
-        project_id:         Data project id
         event_id:           Tagging event id for version control of tags
         model_id:           UID of model in content registry
         log:                Log toggle
@@ -164,13 +168,11 @@ def submit_ml_job(
     input_params["log"] = log
 
     kwargs = {}
-    data_project = DataProject()
-    data_project.project_id = project_id
-    data_project.init_from_dict(file_paths)
+    data_project = DataProject.from_dict(data_project_dict)
 
     if action_selection == "train_model":
         experiment_id, out_path, data_info = prepare_directories(
-            USER, data_project, subset=labeled_dropdown
+            USER, data_project, labeled_indices=labeled_dropdown
         )
         command = f"{train_cmd} -d {data_info} -o {out_path} -e {event_id}"
     else:
@@ -178,17 +180,21 @@ def submit_ml_job(
             USER, data_project, train=False
         )
         training_exp_id = job_data[row[0]]["experiment_id"]
-        model_path = pathlib.Path(
-            "/app/work/data/mlexchange_store/{}/{}".format(USER, training_exp_id)
-        )
+        model_path = pathlib.Path(f"{DATA_DIR}/mlex_store/{USER}/{training_exp_id}")
         command = f"{prediction_cmd} -d {data_info} -m {model_path} -o {out_path}"
         kwargs = {"train_params": job_data[row[0]]["parameters"]}
+
+        with open(f"{out_path}/.file_manager_vars.pkl", "wb") as file:
+            pickle.dump(
+                data_project_dict,
+                file,
+            )
 
     # Define MLExjob
     job = MlexJob(
         service_type="backend",
         description=model_name,
-        working_directory="{}".format(DATA_DIR),
+        working_directory="{}".format(DIR_MOUNT),
         job_kwargs={
             "uri": model_uri,
             "type": "docker",
@@ -196,7 +202,7 @@ def submit_ml_job(
             "kwargs": {
                 "job_type": action_selection,
                 "experiment_id": experiment_id,
-                "dataset": project_id,
+                "dataset": data_project.project_id,
                 "params": input_params,
                 **kwargs,
             },
