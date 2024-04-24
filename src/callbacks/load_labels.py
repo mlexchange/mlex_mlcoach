@@ -14,21 +14,19 @@ from app_layout import SPLASH_URL
     Output("modal-load-splash", "is_open"),
     Input("button-load-splash", "n_clicks"),
     Input("confirm-load-splash", "n_clicks"),
-    Input({"base_id": "file-manager", "name": "project-id"}, "data"),
-    State({"base_id": "file-manager", "name": "docker-file-paths"}, "data"),
+    Input({"base_id": "file-manager", "name": "data-project-dict"}, "data"),
     State("timezone-browser", "value"),
     prevent_initial_call=True,
 )
 def load_from_splash_modal(
-    load_n_click, confirm_load, project_id, file_paths, timezone_browser
+    load_n_click, confirm_load, data_project_dict, timezone_browser
 ):
     """
     Load labels from splash-ml associated with the project_id
     Args:
         load_n_click:       Number of clicks in load from splash-ml button
         confirm_load:       Number of clicks in confim button within loading from splash-ml modal
-        project_id:         Data project id
-        file_paths:         Data project information
+        data_project_dict:  Data project information
         timezone_browser:   Timezone of the browser
     Returns:
         event_id:           Available tagging event IDs associated with the current data project
@@ -40,14 +38,13 @@ def load_from_splash_modal(
     ):  # if confirmed, load chosen tagging event
         return dash.no_update, False
     # If unconfirmed, retrieve the tagging event IDs associated with the current data project
-    data_project = DataProject()
-    data_project.init_from_dict(file_paths)
-    if len(data_project.data) > 0:
-        num_imgs = len(data_project.data)
+    data_project = DataProject.from_dict(data_project_dict)
+    if len(data_project.datasets) > 0:
+        num_imgs = data_project.datasets[-1].cumulative_data_count
         response = requests.post(
             f"{SPLASH_URL}/datasets/search",
             params={"page[limit]": num_imgs},
-            json={"project": project_id},
+            json={"project": data_project.project_id},
         )
         event_ids = []
         for dataset in response.json():
@@ -82,25 +79,23 @@ def load_from_splash_modal(
 @callback(
     Output("img-labeled-indx", "options"),
     Input("confirm-load-splash", "n_clicks"),
-    State({"base_id": "file-manager", "name": "docker-file-paths"}, "data"),
-    State({"base_id": "file-manager", "name": "project-id"}, "data"),
+    State({"base_id": "file-manager", "name": "data-project-dict"}, "data"),
     State("event-id", "value"),
     prevent_initial_call=True,
 )
-def get_labeled_indx(confirm_load, file_paths, project_id, event_id):
+def get_labeled_indx(confirm_load, data_project_dict, event_id):
     """
     This callback retrieves the indexes of labeled images
     Args:
         confirm_load:       Number of clicks in "confirm loading from splash" button
-        file_paths:         Data project information
-        project_id:         Data project id
+        data_project_dict:  Data project information
         event_id:           Tagging event id for version control of tags
     Returns:
         List of indexes of labeled images in this tagging event
     """
-    data_project = DataProject()
-    data_project.init_from_dict(file_paths)
-    num_imgs = len(data_project.data)
+    data_project = DataProject.from_dict(data_project_dict)
+    num_imgs = data_project.datasets[-1].cumulative_data_count
+    data_uris = data_project.read_datasets(list(range(num_imgs)), just_uri=True)
     options = []
     if num_imgs > 0:
         response = requests.post(
@@ -112,8 +107,8 @@ def get_labeled_indx(confirm_load, file_paths, project_id, event_id):
             index = next(
                 (
                     i
-                    for i, data_obj in enumerate(data_project.data)
-                    if data_obj.uri == dataset["uri"] and len(dataset["tags"]) > 0
+                    for i, uri in enumerate(data_uris)
+                    if uri == dataset["uri"] and len(dataset["tags"]) > 0
                 ),
                 None,
             )

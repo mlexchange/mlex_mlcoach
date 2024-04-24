@@ -8,9 +8,14 @@ from file_manager.data_project import DataProject
 
 from app_layout import DATA_DIR, USER, app, long_callback_manager
 from callbacks.display import (  # noqa: F401
+    close_warning_modal,
+    open_warning_modal,
     refresh_image,
+    refresh_label,
     refresh_results,
-    toggle_warning_modal,
+    update_slider_boundaries_new_dataset,
+    update_slider_boundaries_prediction,
+    update_slider_value,
 )
 from callbacks.download import disable_download, toggle_storage_modal  # noqa: F401
 from callbacks.execute import execute  # noqa: F401

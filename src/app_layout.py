@@ -3,7 +3,6 @@ import pathlib
 
 import dash
 import dash_bootstrap_components as dbc
-import dash_uploader as du
 import diskcache
 from dash import html
 from dash.long_callback import DiskcacheLongCallbackManager
@@ -46,15 +45,11 @@ app = dash.Dash(
 app.title = "MLCoach"
 app._favicon = "mlex.ico"
 dash_file_explorer = FileManager(
-    DOCKER_DATA,
-    UPLOAD_FOLDER_ROOT,
+    DATA_DIR,
     open_explorer=False,
     api_key=TILED_KEY,
-    splash_uri=SPLASH_URL,
-    default_tiled_uri=DEFAULT_TILED_URI,
 )
 dash_file_explorer.init_callbacks(app)
-du.configure_upload(app, UPLOAD_FOLDER_ROOT, use_upload_id=False)
 
 # DEFINE LAYOUT
 app.layout = html.Div(

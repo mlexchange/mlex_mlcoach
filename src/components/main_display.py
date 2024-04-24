@@ -27,10 +27,11 @@ def main_display(job_table):
                                             src=plot_figure(),
                                             style={
                                                 "height": "60%",
-                                                "margin": "auto",
                                                 "display": "block",
+                                                "margin": "auto",
                                             },
                                         ),
+                                        dcc.Store(id="img-uri", data=None),
                                         html.Div(
                                             [
                                                 dbc.Label(
@@ -64,6 +65,7 @@ def main_display(job_table):
                                                             dcc.Dropdown(
                                                                 id="img-labeled-indx",
                                                                 options=[],
+                                                                clearable=False,
                                                             ),
                                                         ),
                                                     ]
@@ -73,7 +75,7 @@ def main_display(job_table):
                                         ),
                                     ],
                                     style={
-                                        "height": "40vh",
+                                        "height": "45vh",
                                         "vertical-align": "bottom",
                                     },
                                 ),
@@ -92,7 +94,7 @@ def main_display(job_table):
                                             id="results-plot", style={"display": "none"}
                                         )
                                     ],
-                                    style={"height": "40vh"},
+                                    style={"height": "45vh"},
                                 ),
                             ],
                         ),

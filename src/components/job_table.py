@@ -4,6 +4,7 @@ from dash import dash_table, dcc
 
 def job_table():
     job_table = dbc.Card(
+        style={"margin-top": "0rem"},
         children=[
             dbc.CardHeader("List of Jobs"),
             dbc.CardBody(
@@ -167,6 +168,6 @@ def job_table():
                 id="info-modal",
                 size="xl",
             ),
-        ]
+        ],
     )
     return job_table
