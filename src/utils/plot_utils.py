@@ -63,7 +63,9 @@ def plot_figure(image=None):
     if not image:  # Create a blank image
         blank_image = np.zeros((200, 200, 3), dtype=np.uint8)
         image = Image.fromarray(blank_image)
-    fig = px.imshow(image, height=500)
+        fig = px.imshow(image, height=200, width=200)
+    else:
+        fig = px.imshow(image, height=500)
     fig.update_xaxes(showgrid=False, showticklabels=False, zeroline=False)
     fig.update_yaxes(showgrid=False, showticklabels=False, zeroline=False)
     fig.update_layout(coloraxis_showscale=False)

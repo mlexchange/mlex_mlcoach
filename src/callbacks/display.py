@@ -61,7 +61,7 @@ def refresh_image(
         and data_project.datasets[-1].cumulative_data_count > 0
     ):
         fig, uri = data_project.read_datasets(
-            indices=[img_ind], resize=False
+            indices=[img_ind], resize=True
         )  # , log=log)
         fig = fig[0]
         uri = uri[0]

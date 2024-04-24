@@ -22,14 +22,22 @@ def main_display(job_table):
                                 dbc.CardHeader("Data Overview"),
                                 dbc.CardBody(
                                     children=[
-                                        html.Img(
-                                            id="img-output",
-                                            src=plot_figure(),
-                                            style={
-                                                "height": "60%",
-                                                "display": "block",
-                                                "margin": "auto",
-                                            },
+                                        dcc.Loading(
+                                            id="loading-display",
+                                            parent_className="transparent-loader-wrapper",
+                                            children=[
+                                                html.Div(
+                                                    html.Img(
+                                                        id="img-output",
+                                                        src=plot_figure(),
+                                                        style={
+                                                            "height": "60%",
+                                                            "display": "block",
+                                                            "margin": "auto",
+                                                        },
+                                                    ),
+                                                )
+                                            ],
                                         ),
                                         dcc.Store(id="img-uri", data=None),
                                         html.Div(
