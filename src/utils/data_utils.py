@@ -31,7 +31,7 @@ def prepare_directories(user_id, data_project, labeled_indices=None, train=True)
         uri_list = data_project.tiled_to_local_project(
             DATA_DIR, indices=labeled_indices
         )
-        splash_uris = data_project.read_datasets(labeled_indices)
+        splash_uris = data_project.read_datasets(labeled_indices, just_uri=True)
         data_info = pd.DataFrame({"uri": uri_list, "splash_uri": splash_uris})
     elif data_type == "tiled":
         # Save sub uris
