@@ -2,7 +2,6 @@ import time
 from datetime import datetime, timezone
 
 import dash
-import pytz
 import requests
 from dash import Input, Output, State, callback
 from file_manager.data_project import DataProject
@@ -42,39 +41,27 @@ def load_from_splash_modal(
     data_project = DataProject.from_dict(data_project_dict)
     if len(data_project.datasets) > 0:
         start = time.time()
-        num_imgs = data_project.datasets[-1].cumulative_data_count
-        response = requests.post(
-            f"{SPLASH_URL}/datasets/search",
-            params={"page[limit]": num_imgs},
-            json={"project": data_project.project_id},
+        response = requests.get(
+            f"{SPLASH_URL}/events", params={"page[offset]": 0, "page[limit]": 1000}
         )
-        print(f"Time taken to fetch tagging events: {time.time() - start}", flush=True)
-        start = time.time()
-        event_ids = []
-        for dataset in response.json():
-            for tag in dataset["tags"]:
-                if tag["event_id"] not in event_ids:
-                    event_ids.append(tag["event_id"])
-        print(f"Time taken to fetch tagging events: {time.time() - start}", flush=True)
+        event_ids = response.json()
+
         # Present the tagging event options with their corresponding tagger id and runtime
-        start = time.time()
         options = []
-        timezone_browser = pytz.timezone(timezone_browser)
-        for event_id in event_ids[::-1]:
-            tagging_event = requests.get(f"{SPLASH_URL}/events/{event_id}").json()
+        for tagging_event in event_ids:
             tagging_event_time = datetime.strptime(
                 tagging_event["run_time"], "%Y-%m-%dT%H:%M:%S.%f"
             )
             tagging_event_time = (
                 tagging_event_time.replace(tzinfo=timezone.utc)
-                .astimezone(timezone_browser)
+                .astimezone(tz=None)
                 .strftime("%d-%m-%Y %H:%M:%S")
             )
             options.append(
                 {
                     "label": f"Tagger ID: {tagging_event['tagger_id']}, \
                                     modified: {tagging_event_time}",
-                    "value": event_id,
+                    "value": tagging_event["uid"],
                 }
             )
         print(f"Time taken to fetch tagging events: {time.time() - start}", flush=True)
