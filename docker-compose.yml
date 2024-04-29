@@ -17,6 +17,8 @@ services:
       TILED_KEY: "${TILED_KEY}"
       DEFAULT_TILED_URI: "${DEFAULT_TILED_URI}"
       DEFAULT_TILED_SUB_URI: "${DEFAULT_TILED_SUB_URI}"
+      APP_HOST: "0.0.0.0"
+      APP_PORT: "8050"
     ports:
       - 127.0.0.1:8062:8050
     networks:
