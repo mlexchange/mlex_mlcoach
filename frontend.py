@@ -6,7 +6,7 @@ import shutil
 import tempfile
 from uuid import uuid4
 
-from dash import Input, Output, State, dcc
+from dash import ClientsideFunction, Input, Output, State, dcc
 from dash_component_editor import JSONParameterEditor
 from file_manager.data_project import DataProject
 
@@ -30,6 +30,15 @@ from src.utils.job_utils import MlexJob
 from src.utils.model_utils import get_gui_components, get_model_content
 
 DIR_MOUNT = os.getenv("DIR_MOUNT", "/data")
+
+
+app.clientside_callback(
+    ClientsideFunction(namespace="clientside", function_name="transform_image"),
+    Output("img-output", "src"),
+    Input("log-transform", "on"),
+    Input("img-output-store", "data"),
+    prevent_initial_call=True,
+)
 
 
 app.clientside_callback(
@@ -120,7 +129,7 @@ def save_results(download, job_data, row):
     State("model-name", "value"),
     State("event-id", "value"),
     State("model-selection", "value"),
-    State({"base_id": "file-manager", "name": "log-toggle"}, "on"),
+    State("log-transform", "on"),
     State("img-labeled-indx", "options"),
     running=[(Output("job-alert", "is_open"), "True", "False")],
     manager=long_callback_manager,

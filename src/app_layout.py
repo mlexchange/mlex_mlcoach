@@ -1,3 +1,4 @@
+import logging
 import os
 import pathlib
 
@@ -31,6 +32,10 @@ if TILED_KEY == "":
 HOST_NICKNAME = os.getenv("HOST_NICKNAME")
 num_processors, num_gpus = get_host(HOST_NICKNAME)
 
+# SETUP LOGGING
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 # SETUP DASH APP
 cache = diskcache.Cache("./cache")
 long_callback_manager = DiskcacheLongCallbackManager(cache)
@@ -51,6 +56,7 @@ dash_file_explorer = FileManager(
     DATA_DIR,
     open_explorer=False,
     api_key=TILED_KEY,
+    logger=logger,
 )
 dash_file_explorer.init_callbacks(app)
 

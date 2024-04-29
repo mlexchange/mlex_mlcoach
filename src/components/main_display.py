@@ -27,21 +27,23 @@ def main_display(job_table):
                                             parent_className="transparent-loader-wrapper",
                                             children=[
                                                 html.Div(
-                                                    html.Img(
-                                                        id="img-output",
-                                                        src=plot_figure(),
-                                                        style={
-                                                            "height": "60%",
-                                                            "display": "block",
-                                                            "margin": "auto",
-                                                        },
-                                                    ),
-                                                )
+                                                    [
+                                                        html.Img(
+                                                            id="img-output",
+                                                            src=plot_figure(),
+                                                            style={
+                                                                "height": "60%",
+                                                                "display": "block",
+                                                                "margin": "auto",
+                                                            },
+                                                        ),
+                                                        dcc.Store(
+                                                            id="img-output-store",
+                                                            data=None,
+                                                        ),
+                                                    ]
+                                                ),
                                             ],
-                                        ),
-                                        dcc.Store(
-                                            id="img-output-store",
-                                            data=None,
                                         ),
                                         dcc.Store(id="img-uri", data=None),
                                         html.Div(

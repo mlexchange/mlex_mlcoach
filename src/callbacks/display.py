@@ -1,6 +1,7 @@
 import os
 import pathlib
 import pickle
+import time
 
 import dash
 import pandas as pd
@@ -9,17 +10,16 @@ from dash import Input, Output, State, callback
 from dash.exceptions import PreventUpdate
 from file_manager.data_project import DataProject
 
-from src.app_layout import DATA_DIR, SPLASH_URL, USER
+from src.app_layout import DATA_DIR, SPLASH_URL, USER, logger
 from src.utils.job_utils import TableJob
 from src.utils.plot_utils import generate_loss_plot, get_class_prob, plot_figure
 
 
 @callback(
-    Output("img-output", "src"),
+    Output("img-output-store", "data"),
     Output("img-uri", "data"),
     Input({"base_id": "file-manager", "name": "data-project-dict"}, "data"),
     Input("img-slider", "value"),
-    # Input({"base_id": "file-manager", "name": "log-toggle"}, "on"),
     Input("jobs-table", "selected_rows"),
     Input("jobs-table", "data"),
     prevent_initial_call=True,
@@ -27,7 +27,6 @@ from src.utils.plot_utils import generate_loss_plot, get_class_prob, plot_figure
 def refresh_image(
     data_project_dict,
     img_ind,
-    # log,
     row,
     data_table,
 ):
@@ -42,6 +41,7 @@ def refresh_image(
     Returns:
         img-output:         Output figure
     """
+    start = time.time()
     # Get selected job type
     if row and len(row) > 0 and row[0] < len(data_table):
         selected_job_type = data_table[row[0]]["job_type"]
@@ -54,20 +54,18 @@ def refresh_image(
 
         with open(f"{data_path}/.file_manager_vars.pkl", "rb") as file:
             data_project_dict = pickle.load(file)
-
     data_project = DataProject.from_dict(data_project_dict)
     if (
         len(data_project.datasets) > 0
         and data_project.datasets[-1].cumulative_data_count > 0
     ):
-        fig, uri = data_project.read_datasets(
-            indices=[img_ind], resize=True
-        )  # , log=log)
+        fig, uri = data_project.read_datasets(indices=[img_ind], resize=True)
         fig = fig[0]
         uri = uri[0]
     else:
         uri = None
         fig = plot_figure()
+    logger.info(f"Time to read data: {time.time() - start}")
     return fig, uri
 
 
