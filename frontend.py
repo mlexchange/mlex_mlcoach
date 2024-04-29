@@ -7,10 +7,11 @@ import tempfile
 from uuid import uuid4
 
 from dash import Input, Output, State, dcc
+from dash_component_editor import JSONParameterEditor
 from file_manager.data_project import DataProject
 
-from app_layout import DATA_DIR, USER, app, long_callback_manager
-from callbacks.display import (  # noqa: F401
+from src.app_layout import DATA_DIR, USER, app, long_callback_manager
+from src.callbacks.display import (  # noqa: F401
     close_warning_modal,
     open_warning_modal,
     refresh_image,
@@ -20,14 +21,13 @@ from callbacks.display import (  # noqa: F401
     update_slider_boundaries_prediction,
     update_slider_value,
 )
-from callbacks.download import disable_download, toggle_storage_modal  # noqa: F401
-from callbacks.execute import close_resources_popup, execute  # noqa: F401
-from callbacks.load_labels import load_from_splash_modal  # noqa: F401
-from callbacks.table import delete_row, open_job_modal, update_table  # noqa: F401
-from dash_component_editor import JSONParameterEditor
-from utils.data_utils import get_input_params, prepare_directories
-from utils.job_utils import MlexJob
-from utils.model_utils import get_gui_components, get_model_content
+from src.callbacks.download import disable_download, toggle_storage_modal  # noqa: F401
+from src.callbacks.execute import close_resources_popup, execute  # noqa: F401
+from src.callbacks.load_labels import load_from_splash_modal  # noqa: F401
+from src.callbacks.table import delete_row, open_job_modal, update_table  # noqa: F401
+from src.utils.data_utils import get_input_params, prepare_directories
+from src.utils.job_utils import MlexJob
+from src.utils.model_utils import get_gui_components, get_model_content
 
 DIR_MOUNT = os.getenv("DIR_MOUNT", "/data")
 
@@ -215,4 +215,4 @@ def submit_ml_job(
 
 
 if __name__ == "__main__":
-    app.run_server(debug=True, host="0.0.0.0")
+    app.run_server(debug=True, host="0.0.0.0", port="8053")

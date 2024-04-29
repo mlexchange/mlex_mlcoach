@@ -1,8 +1,8 @@
 import dash
 from dash import Input, Output, State, callback, dcc
 
-from app_layout import USER
-from utils.job_utils import TableJob
+from src.app_layout import USER
+from src.utils.job_utils import TableJob
 
 
 @callback(

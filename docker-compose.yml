@@ -1,29 +1,27 @@
 version: '3.7'
 
-x-environment: &commonEnvironment
-    DATA_DIR: "${PWD}/data/"
-    PROJECT_ID: "-1"
-    SPLASH_URL: "http://splash:80/api/v0"
-    MLEX_COMPUTE_URL: "http://job-service:8080/api/v0"
-    MLEX_CONTENT_URL: "http://content-api:8000/api/v0" 
-    HOST_NICKNAME: "local"
-    TILED_KEY: "${TILED_KEY}"
-    DEFAULT_TILED_URI: "${DEFAULT_TILED_URI}"
-
 services:
   mlcoach:
     restart: "unless-stopped"
     container_name: "mlcoach"
-    image: ghcr.io/taxe10/mlex_mlcoach:main
-    environment:
-      *commonEnvironment
+    image: ghcr.io/mlexchange/mlex_mlcoach:main
     volumes:
       - ${PWD}/data:/app/work/data
+    environment:
+      DATA_DIR: "${PWD}/data/"
+      PROJECT_ID: "-1"
+      SPLASH_URL: "http://splash:80/api/v0"
+      MLEX_COMPUTE_URL: "http://job-service:8080/api/v0"
+      MLEX_CONTENT_URL: "http://content-api:8000/api/v0"
+      HOST_NICKNAME: "${HOST_NICKNAME}"
+      TILED_KEY: "${TILED_KEY}"
+      DEFAULT_TILED_URI: "${DEFAULT_TILED_URI}"
+      DEFAULT_TILED_QUERY: "${DEFAULT_TILED_QUERY}"
     ports:
       - 127.0.0.1:8062:8050
     networks:
       - computing_api_default
-  
+
   classifier:
     image: ghcr.io/mlexchange/mlex_image_classification:main
 

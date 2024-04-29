@@ -9,9 +9,9 @@ from dash import Input, Output, State, callback
 from dash.exceptions import PreventUpdate
 from file_manager.data_project import DataProject
 
-from app_layout import DATA_DIR, SPLASH_URL, USER
-from utils.job_utils import TableJob
-from utils.plot_utils import generate_loss_plot, get_class_prob, plot_figure
+from src.app_layout import DATA_DIR, SPLASH_URL, USER
+from src.utils.job_utils import TableJob
+from src.utils.plot_utils import generate_loss_plot, get_class_prob, plot_figure
 
 
 @callback(

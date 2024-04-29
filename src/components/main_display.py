@@ -1,7 +1,7 @@
 import dash_bootstrap_components as dbc
 from dash import dcc, html
 
-from utils.plot_utils import plot_figure
+from src.utils.plot_utils import plot_figure
 
 
 def main_display(job_table):
@@ -38,6 +38,10 @@ def main_display(job_table):
                                                     ),
                                                 )
                                             ],
+                                        ),
+                                        dcc.Store(
+                                            id="img-output-store",
+                                            data=None,
                                         ),
                                         dcc.Store(id="img-uri", data=None),
                                         html.Div(

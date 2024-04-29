@@ -6,15 +6,18 @@ import dash_bootstrap_components as dbc
 import diskcache
 from dash import html
 from dash.long_callback import DiskcacheLongCallbackManager
+from dotenv import load_dotenv
 from file_manager.main import FileManager
 
-from components.header import header
-from components.job_table import job_table
-from components.main_display import main_display
-from components.resources_setup import resources_setup
-from components.sidebar import sidebar
-from utils.job_utils import TableJob, get_host
-from utils.model_utils import get_model_list
+from src.components.header import header
+from src.components.job_table import job_table
+from src.components.main_display import main_display
+from src.components.resources_setup import resources_setup
+from src.components.sidebar import sidebar
+from src.utils.job_utils import TableJob, get_host
+from src.utils.model_utils import get_model_list
+
+load_dotenv(".env")
 
 USER = "admin"
 DATA_DIR = os.getenv("DATA_DIR")

@@ -6,7 +6,7 @@ import requests
 from dash import Input, Output, State, callback
 from file_manager.data_project import DataProject
 
-from app_layout import SPLASH_URL
+from src.app_layout import SPLASH_URL
 
 
 @callback(
