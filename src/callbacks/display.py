@@ -2,6 +2,7 @@ import os
 import pathlib
 import pickle
 import time
+import traceback
 
 import dash
 import pandas as pd
@@ -238,8 +239,8 @@ def refresh_results(img_ind, row, interval, data_table, current_fig):
             job_data = TableJob.get_job(
                 USER, "mlcoach", job_id=data_table[row[0]]["job_id"]
             )
-        except Exception as e:
-            print(e, flush=True)
+        except Exception:
+            logger.error(traceback.format_exc())
             raise PreventUpdate
         log = job_data["logs"]
 

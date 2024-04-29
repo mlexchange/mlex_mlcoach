@@ -6,7 +6,7 @@ import requests
 from dash import Input, Output, State, callback
 from file_manager.data_project import DataProject
 
-from src.app_layout import SPLASH_URL
+from src.app_layout import SPLASH_URL, logger
 
 
 @callback(
@@ -64,7 +64,7 @@ def load_from_splash_modal(
                     "value": tagging_event["uid"],
                 }
             )
-        print(f"Time taken to fetch tagging events: {time.time() - start}", flush=True)
+        logger.info(f"Time taken to fetch tagging events: {time.time() - start}")
         return options, True
     else:
         return dash.no_update, dash.no_update
