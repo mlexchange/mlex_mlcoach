@@ -6,7 +6,9 @@ import pandas as pd
 from src.app_layout import DATA_DIR, TILED_KEY
 
 
-def prepare_directories(user_id, data_project, labeled_indices=None, train=True):
+def prepare_directories(
+    user_id, data_project, labeled_indices=None, train=True, correct_path=False
+):
     """
     Prepare data directories that host experiment results and data movements processes for tiled
     If data is served through tiled, a local copy will be made for ML training and inference
@@ -16,6 +18,7 @@ def prepare_directories(user_id, data_project, labeled_indices=None, train=True)
         data_project:   List of data sets in the application
         labeled_indices:    List of indexes of labeled images in the data set
         train:          Flag to indicate if the data is used for training or inference
+        correct_path:   Flag to indicate if the path should be corrected
     Returns:
         experiment_id:  ML experiment ID
         out_path:       Path were experiment results will be stored
@@ -29,15 +32,19 @@ def prepare_directories(user_id, data_project, labeled_indices=None, train=True)
     if data_type == "tiled" and train:
         # Download tiled data to local
         uri_list = data_project.tiled_to_local_project(
-            DATA_DIR, indices=labeled_indices
+            DATA_DIR, indices=labeled_indices, correct_path=correct_path
         )
         splash_uris = data_project.read_datasets(labeled_indices, just_uri=True)
         data_info = pd.DataFrame({"uri": uri_list, "splash_uri": splash_uris})
     elif data_type == "tiled":
         # Save sub uris
-        data_info = pd.DataFrame({"root_uri": [data_project.root_uri]})
-        data_info["sub_uris"] = [dataset.uri for dataset in data_project.datasets]
-        data_info["api_key"] = [TILED_KEY]
+        root_uri = data_project.root_uri
+        data_info = pd.DataFrame({"root_uri": [root_uri]})
+        sub_uris_df = pd.DataFrame(
+            {"sub_uris": [dataset.uri for dataset in data_project.datasets]}
+        )
+        data_info = pd.concat([data_info, sub_uris_df], axis=1)
+        data_info["api_key"] = [TILED_KEY] * len(data_info)
     else:
         # Save filenames
         uri_list = []
@@ -45,9 +52,11 @@ def prepare_directories(user_id, data_project, labeled_indices=None, train=True)
             uri_list.extend(
                 [dataset.uri + "/" + filename for filename in dataset.filenames]
             )
-        data_info = pd.DataFrame(
-            {"uri": [data_project.root_uri + "/" + uri for uri in uri_list]}
-        )
+        if correct_path:
+            root_uri = "/app/work/data" + data_project.root_uri.split(DATA_DIR, 1)[-1]
+        else:
+            root_uri = data_project.root_uri
+        data_info = pd.DataFrame({"uri": [root_uri + "/" + uri for uri in uri_list]})
     data_info["type"] = data_type
     data_info.to_parquet(f"{out_path}/data_info.parquet", engine="pyarrow")
     return experiment_id, out_path, f"{out_path}/data_info.parquet"

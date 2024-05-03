@@ -31,7 +31,7 @@ from src.utils.model_utils import get_gui_components, get_model_content
 
 APP_HOST = os.getenv("APP_HOST", "127.0.0.1")
 APP_PORT = os.getenv("APP_PORT", "8062")
-DIR_MOUNT = os.getenv("DIR_MOUNT", "/data")
+DIR_MOUNT = os.getenv("DIR_MOUNT", DATA_DIR)
 
 
 app.clientside_callback(
@@ -182,20 +182,39 @@ def submit_ml_job(
     data_project = DataProject.from_dict(data_project_dict)
 
     if action_selection == "train_model":
-        experiment_id, out_path, data_info = prepare_directories(
-            USER, data_project, labeled_indices=labeled_dropdown
+        experiment_id, orig_out_path, data_info = prepare_directories(
+            USER,
+            data_project,
+            labeled_indices=labeled_dropdown,
+            correct_path=(DATA_DIR == DIR_MOUNT),
         )
+        # Find the relative data directory in docker container
+        if DIR_MOUNT == DATA_DIR:
+            relative_data_dir = "/app/work/data"
+            out_path = "/app/work/data" + str(orig_out_path).split(DATA_DIR, 1)[-1]
+            data_info = "/app/work/data" + str(data_info).split(DATA_DIR, 1)[-1]
+        else:
+            relative_data_dir = DATA_DIR
         command = f"{train_cmd} -d {data_info} -o {out_path} -e {event_id}"
     else:
-        experiment_id, out_path, data_info = prepare_directories(
-            USER, data_project, train=False
+        experiment_id, orig_out_path, data_info = prepare_directories(
+            USER, data_project, train=False, correct_path=(DATA_DIR == DIR_MOUNT)
         )
+        # Find the relative data directory in docker container
+        if DIR_MOUNT == DATA_DIR:
+            relative_data_dir = "/app/work/data"
+            out_path = "/app/work/data" + str(orig_out_path).split(DATA_DIR, 1)[-1]
+            data_info = "/app/work/data" + str(data_info).split(DATA_DIR, 1)[-1]
+        else:
+            relative_data_dir = DATA_DIR
         training_exp_id = job_data[row[0]]["experiment_id"]
-        model_path = pathlib.Path(f"{DATA_DIR}/mlex_store/{USER}/{training_exp_id}")
+        model_path = pathlib.Path(
+            f"{relative_data_dir}/mlex_store/{USER}/{training_exp_id}"
+        )
         command = f"{prediction_cmd} -d {data_info} -m {model_path} -o {out_path}"
         kwargs = {"train_params": job_data[row[0]]["parameters"]}
 
-        with open(f"{out_path}/.file_manager_vars.pkl", "wb") as file:
+        with open(f"{orig_out_path}/.file_manager_vars.pkl", "wb") as file:
             pickle.dump(
                 data_project_dict,
                 file,

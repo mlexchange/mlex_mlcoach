@@ -3,6 +3,9 @@ import os
 import urllib
 
 import requests
+from dotenv import load_dotenv
+
+load_dotenv(".env")
 
 COMPUTE_URL = str(os.environ["MLEX_COMPUTE_URL"])
 
