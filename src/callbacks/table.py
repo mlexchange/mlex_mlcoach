@@ -75,7 +75,10 @@ def deselect_row(n_click):
     """
     This callback deselects the row in the data table
     """
-    return []
+    if n_click:
+        return []
+    else:
+        raise dash.exceptions.PreventUpdate
 
 
 @callback(

@@ -19,24 +19,24 @@ from src.utils.plot_utils import generate_loss_plot, get_class_prob, plot_figure
 @callback(
     Output("img-output-store", "data"),
     Output("img-uri", "data"),
-    Input({"base_id": "file-manager", "name": "data-project-dict"}, "data"),
     Input("img-slider", "value"),
-    Input("jobs-table", "selected_rows"),
-    Input("jobs-table", "data"),
+    State({"base_id": "file-manager", "name": "data-project-dict"}, "data"),
+    State("jobs-table", "selected_rows"),
+    State("jobs-table", "data"),
     prevent_initial_call=True,
 )
 def refresh_image(
-    data_project_dict,
     img_ind,
+    data_project_dict,
     row,
     data_table,
 ):
     """
     This callback updates the image in the display
     Args:
-        data_project_dict:  Selected data
         img_ind:            Index of image according to the slider value
         log:                Log toggle
+        data_project_dict:  Selected data
         row:                Selected job (model)
         data_table:         Data in table of jobs
     Returns:
@@ -284,7 +284,7 @@ def refresh_results(img_ind, row, interval, data_table, current_fig):
         if (
             current_fig
             and results_fig != dash.no_update
-            and current_fig["data"][0]["x"] == list(results_fig["data"][0]["x"])
+            and current_fig["data"][0]["y"] == list(results_fig["data"][0]["y"])
         ):
             results_fig = dash.no_update
             results_style_fig = dash.no_update
