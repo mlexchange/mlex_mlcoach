@@ -54,9 +54,17 @@ def prepare_directories(
             )
         if correct_path:
             root_uri = "/app/work/data" + data_project.root_uri.split(DATA_DIR, 1)[-1]
+            data_info = pd.DataFrame(
+                {"uri": [root_uri + "/" + uri for uri in uri_list]}
+            )
+            data_info["splash_uri"] = [
+                data_project.root_uri + "/" + uri for uri in uri_list
+            ]
         else:
             root_uri = data_project.root_uri
-        data_info = pd.DataFrame({"uri": [root_uri + "/" + uri for uri in uri_list]})
+            data_info = pd.DataFrame(
+                {"uri": [root_uri + "/" + uri for uri in uri_list]}
+            )
     data_info["type"] = data_type
     data_info.to_parquet(f"{out_path}/data_info.parquet", engine="pyarrow")
     return experiment_id, out_path, f"{out_path}/data_info.parquet"
