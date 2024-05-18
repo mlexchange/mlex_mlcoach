@@ -34,6 +34,8 @@ APP_PORT = os.getenv("APP_PORT", "8062")
 DIR_MOUNT = os.getenv("DIR_MOUNT", DATA_DIR)
 
 
+server = app.server
+
 app.clientside_callback(
     ClientsideFunction(namespace="clientside", function_name="transform_image"),
     Output("img-output", "src"),
