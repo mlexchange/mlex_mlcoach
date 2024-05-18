@@ -291,7 +291,7 @@ def refresh_results(img_ind, row, interval, data_table, current_fig):
 
         return results_fig, results_style_fig
     elif current_fig:
-        return dash.no_update, {"display": "none"}
+        return [], {"display": "none"}
     else:
         raise PreventUpdate
 
