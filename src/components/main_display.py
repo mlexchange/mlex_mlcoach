@@ -76,10 +76,16 @@ def main_display(job_table):
                                                             ),
                                                         ),
                                                         dbc.Col(
-                                                            dcc.Dropdown(
-                                                                id="img-labeled-indx",
-                                                                options=[],
-                                                                clearable=False,
+                                                            dcc.Loading(
+                                                                id="loading-labeled-imgs",
+                                                                parent_className="transparent-loader-wrapper",
+                                                                children=[
+                                                                    dcc.Dropdown(
+                                                                        id="img-labeled-indx",
+                                                                        options=[],
+                                                                        clearable=False,
+                                                                    ),
+                                                                ],
                                                             ),
                                                         ),
                                                     ]
