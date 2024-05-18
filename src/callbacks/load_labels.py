@@ -47,23 +47,31 @@ def load_from_splash_modal(
         event_ids = response.json()
 
         # Present the tagging event options with their corresponding tagger id and runtime
-        options = []
+        temp = []
         for tagging_event in event_ids:
+            tagger_id = tagging_event["tagger_id"]
+            utc_tagging_event_time = tagging_event["run_time"]
             tagging_event_time = datetime.strptime(
-                tagging_event["run_time"], "%Y-%m-%dT%H:%M:%S.%f"
+                utc_tagging_event_time, "%Y-%m-%dT%H:%M:%S.%f"
             )
             tagging_event_time = (
                 tagging_event_time.replace(tzinfo=timezone.utc)
                 .astimezone(tz=None)
                 .strftime("%d-%m-%Y %H:%M:%S")
             )
-            options.append(
-                {
-                    "label": f"Tagger ID: {tagging_event['tagger_id']}, \
-                                    modified: {tagging_event_time}",
-                    "value": tagging_event["uid"],
-                }
+            temp.append(
+                (
+                    tagging_event_time,
+                    {
+                        "label": f"Tagger ID: {tagger_id}, modified: {tagging_event_time}",
+                        "value": tagging_event["uid"],
+                    },
+                )
             )
+
+        # Sort temp by time in descending order and extract the dictionaries
+        options = [item[1] for item in sorted(temp, key=lambda x: x[0], reverse=True)]
+
         logger.info(f"Time taken to fetch tagging events: {time.time() - start}")
         return options, True
     else:
