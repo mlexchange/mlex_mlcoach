@@ -10,7 +10,7 @@ from dash import ClientsideFunction, Input, Output, State, dcc
 from dash_component_editor import JSONParameterEditor
 from file_manager.data_project import DataProject
 
-from src.app_layout import DATA_DIR, USER, app, long_callback_manager
+from src.app_layout import DATA_DIR, TILED_KEY, USER, app, long_callback_manager
 from src.callbacks.display import (  # noqa: F401
     close_warning_modal,
     open_warning_modal,
@@ -181,7 +181,7 @@ def submit_ml_job(
     input_params["log"] = log
 
     kwargs = {}
-    data_project = DataProject.from_dict(data_project_dict)
+    data_project = DataProject.from_dict(data_project_dict, api_key=TILED_KEY)
 
     if action_selection == "train_model":
         experiment_id, orig_out_path, data_info = prepare_directories(

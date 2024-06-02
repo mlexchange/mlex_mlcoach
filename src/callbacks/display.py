@@ -11,7 +11,7 @@ from dash import Input, Output, State, callback
 from dash.exceptions import PreventUpdate
 from file_manager.data_project import DataProject
 
-from src.app_layout import DATA_DIR, SPLASH_URL, USER, logger
+from src.app_layout import DATA_DIR, SPLASH_URL, TILED_KEY, USER, logger
 from src.utils.job_utils import TableJob
 from src.utils.plot_utils import generate_loss_plot, get_class_prob, plot_figure
 
@@ -55,7 +55,7 @@ def refresh_image(
 
         with open(f"{data_path}/.file_manager_vars.pkl", "rb") as file:
             data_project_dict = pickle.load(file)
-    data_project = DataProject.from_dict(data_project_dict)
+    data_project = DataProject.from_dict(data_project_dict, api_key=TILED_KEY)
     if (
         len(data_project.datasets) > 0
         and data_project.datasets[-1].cumulative_data_count > 0
@@ -106,7 +106,7 @@ def update_slider_boundaries_prediction(
 
         with open(f"{data_path}/.file_manager_vars.pkl", "rb") as file:
             data_project_dict = pickle.load(file)
-        data_project = DataProject.from_dict(data_project_dict)
+        data_project = DataProject.from_dict(data_project_dict, api_key=TILED_KEY)
 
         # Check if slider index is out of bounds
         if (
@@ -144,7 +144,7 @@ def update_slider_boundaries_new_dataset(
         img-slider:         Maximum value of the slider
         img-slider:         Slider index
     """
-    data_project = DataProject.from_dict(data_project_dict)
+    data_project = DataProject.from_dict(data_project_dict, api_key=TILED_KEY)
     if len(data_project.datasets) > 0:
         max_ind = data_project.datasets[-1].cumulative_data_count - 1
     else:
@@ -187,7 +187,7 @@ def refresh_label(uri, event_id, data_project_dict):
     Returns:
         img-label:          Label of the image
     """
-    data_project = DataProject.from_dict(data_project_dict)
+    data_project = DataProject.from_dict(data_project_dict, api_key=TILED_KEY)
     label = "Not labeled"
     if event_id is not None and uri is not None:
         datasets = requests.get(
@@ -279,6 +279,10 @@ def refresh_results(img_ind, row, interval, data_table, current_fig):
                         "height": "100%",
                         "display": "block",
                     }
+
+        else:
+            results_fig = []
+            results_style_fig = {"display": "none"}
 
         # Do not update the plot unless loss plot changed
         if (

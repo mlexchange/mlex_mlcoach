@@ -6,7 +6,7 @@ import requests
 from dash import Input, Output, State, callback
 from file_manager.data_project import DataProject
 
-from src.app_layout import SPLASH_URL, logger
+from src.app_layout import SPLASH_URL, TILED_KEY, logger
 
 
 @callback(
@@ -38,7 +38,7 @@ def load_from_splash_modal(
     ):  # if confirmed, load chosen tagging event
         return dash.no_update, False
     # If unconfirmed, retrieve the tagging event IDs associated with the current data project
-    data_project = DataProject.from_dict(data_project_dict)
+    data_project = DataProject.from_dict(data_project_dict, api_key=TILED_KEY)
     if len(data_project.datasets) > 0:
         start = time.time()
         response = requests.get(
@@ -95,7 +95,7 @@ def get_labeled_indx(confirm_load, data_project_dict, event_id):
     Returns:
         List of indexes of labeled images in this tagging event
     """
-    data_project = DataProject.from_dict(data_project_dict)
+    data_project = DataProject.from_dict(data_project_dict, api_key=TILED_KEY)
     num_imgs = data_project.datasets[-1].cumulative_data_count
     data_uris = data_project.read_datasets(list(range(num_imgs)), just_uri=True)
     options = []
