@@ -129,7 +129,7 @@ def sidebar(file_explorer, models, counters):
                                     id="app-parameters",
                                     style={
                                         "overflowY": "scroll",
-                                        "height": "58vh",  # Adjust as needed
+                                        "height": "50vh",  # Adjust as needed
                                     },
                                 ),
                             ]
