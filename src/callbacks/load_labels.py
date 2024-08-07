@@ -44,6 +44,7 @@ def load_from_splash_modal(
         response = requests.get(
             f"{SPLASH_URL}/events", params={"page[offset]": 0, "page[limit]": 1000}
         )
+        
         event_ids = response.json()
 
         # Present the tagging event options with their corresponding tagger id and runtime
