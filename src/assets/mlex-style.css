@@ -22,7 +22,7 @@ label {
   margin-bottom: 0;
 }
 
-#transparent-loader-wrapper > div {
+.transparent-loader-wrapper > div {
     visibility: visible !important;
 }
 
