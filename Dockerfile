@@ -5,8 +5,8 @@ RUN ls
 COPY pyproject.toml pyproject.toml
 COPY README.md README.md
 
-RUN pip3 install --upgrade pip &&\
-    pip3 install .
+RUN pip install --upgrade pip &&\
+    pip install .
 
 WORKDIR /app/work
 ENV HOME /app/work

@@ -6,9 +6,10 @@ services:
     container_name: "mlcoach"
     image: ghcr.io/mlexchange/mlex_mlcoach:main
     volumes:
-      - ${PWD}/data:/app/work/data
+      - $DATA_DIR:/app/work/data
     environment:
-      DATA_DIR: "${PWD}/data/"
+      DIR_MOUNT: "${DATA_DIR}"
+      DATA_DIR: "/app/work/data"
       PROJECT_ID: "-1"
       SPLASH_URL: "http://splash:80/api/v0"
       MLEX_COMPUTE_URL: "http://job-service:8080/api/v0"
@@ -21,6 +22,35 @@ services:
       APP_PORT: "8050"
     ports:
       - 127.0.0.1:8062:8050
+    depends_on:
+      - splash
+    networks:
+      - computing_api_default
+
+  splash_db:
+    image: mongo:4.4
+    container_name: splash_db
+    working_dir: /data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: '${MONGO_DB_USERNAME}'
+      MONGO_INITDB_ROOT_PASSWORD: '${MONGO_DB_PASSWORD}'
+    volumes:
+      - "${PWD}/database/:/data/db"
+    networks:
+      - computing_api_default
+
+  splash:
+    image: ghcr.io/als-computing/splash-ml:master
+    container_name: splash
+    environment:
+      APP_MODULE: "tagging.api:app"
+      LOGLEVEL: DEBUG
+      MONGO_DB_URI: "mongodb://${MONGO_DB_USERNAME}:${MONGO_DB_PASSWORD}@splash_db:27017"
+      MAX_WORKERS: 1
+    ports:
+      - 127.0.0.1:8087:80
+    depends_on:
+      - splash_db
     networks:
       - computing_api_default
 
