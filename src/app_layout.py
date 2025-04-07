@@ -12,6 +12,7 @@ from file_manager.main import FileManager
 from mlex_utils.dash_utils.mlex_components import MLExComponents
 
 from src.components.header import header
+from src.components.infrastructure import create_infra_state_affix
 from src.components.main_display import main_display
 from src.components.sidebar import sidebar
 from src.components.training_stats import training_stats_plot
@@ -85,6 +86,7 @@ app.layout = html.Div(
                 html.Div(id="dummy-output"),
                 dcc.Store(id="timezone-browser", data=None),
                 dcc.Store(id="mask-store", data=""),
+                create_infra_state_affix(),
             ],
             fluid=True,
         ),

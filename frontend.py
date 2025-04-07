@@ -15,6 +15,7 @@ from src.callbacks.execute import (  # noqa: F401
     show_training_stats,
     update_model_parameters,
 )
+from src.callbacks.infrastructure_check import check_infra_state  # noqa: F401
 from src.callbacks.load_labels import (  # noqa: F401
     get_labeled_indices,
     refresh_tagging_events,
