@@ -18,7 +18,7 @@ from src.utils.label_utils import labels
     ),
     prevent_initial_call=True,
 )
-def refresh_label(refresh_n_clicks, project_name):
+def refresh_tagging_events(refresh_n_clicks, project_name):
     return labels.get_labeling_events(project_name)
 
 
