@@ -192,9 +192,7 @@ def refresh_results(img_ind, show_res, job_id, project_name):
     if show_res:
         child_job_id = get_children_flow_run_ids(job_id)[1]
         expected_result_uri = f"{USER}/{project_name}/{child_job_id}/probabilities"
-        print(f"Expected result URI: {expected_result_uri}", flush=True)
         probs = tiled_results.get_data_by_trimmed_uri(expected_result_uri, indx=img_ind)
-        print(f"Probabilities: {probs}", flush=True)
         results_fig = get_class_prob(probs)
         results_style_fig = {
             "width": "100%",
@@ -205,99 +203,6 @@ def refresh_results(img_ind, show_res, job_id, project_name):
         results_fig = get_class_prob()
         results_style_fig = {"display": "none"}
     return results_fig, results_style_fig
-
-
-# @callback(
-#     Output("results-plot", "figure"),
-#     Output("results-plot", "style"),
-#     Input("img-slider", "value"),
-#     Input("jobs-table", "selected_rows"),
-#     Input("interval", "n_intervals"),
-#     State("jobs-table", "data"),
-#     State("results-plot", "figure"),
-#     prevent_initial_call=True,
-# )
-# def refresh_results(img_ind, row, interval, data_table, current_fig):
-#     """
-#     This callback updates the results in the display
-#     Args:
-#         img_ind:            Index of image according to the slider value
-#         row:                Selected job (model)
-#         data_table:         Data in table of jobs
-#         current_fig:        Current loss plot
-#     Returns:
-#         results_plot:       Output results with probabilities per class
-#         results_style:      Modify visibility of output results
-#     """
-#     changed_id = dash.callback_context.triggered[-1]["prop_id"]
-#     results_fig = dash.no_update
-#     results_style_fig = dash.no_update
-
-#     if row is not None and len(row) > 0 and row[0] < len(data_table):
-#         # Get the job logs
-#         try:
-#             job_data = TableJob.get_job(
-#                 USER, "mlcoach", job_id=data_table[row[0]]["job_id"]
-#             )
-#         except Exception:
-#             logger.error(traceback.format_exc())
-#             raise PreventUpdate
-#         log = job_data["logs"]
-
-#         # Plot classification probabilities per class
-#         if (
-#             "interval" not in changed_id
-#             and data_table[row[0]]["job_type"] == "prediction_model"
-#         ):
-#             job_id = data_table[row[0]]["experiment_id"]
-#             data_path = pathlib.Path(f"{READ_DIR}/mlex_store/{USER}/{job_id}")
-
-#             # Check if the results file exists
-#             if os.path.exists(f"{data_path}/results.parquet"):
-#                 df_prob = pd.read_parquet(f"{data_path}/results.parquet")
-
-#                 # Get the probabilities for the selected image
-#                 probs = df_prob.iloc[img_ind]
-#                 results_fig = get_class_prob(probs)
-#                 results_style_fig = {
-#                     "width": "100%",
-#                     "height": "100%",
-#                     "display": "block",
-#                 }
-
-#         # Plot the loss plot
-#         elif log and data_table[row[0]]["job_type"] == "train_model":
-#             if data_table[row[0]]["job_type"] == "train_model":
-#                 job_id = data_table[row[0]]["experiment_id"]
-#                 loss_file_path = (
-#                     f"{READ_DIR}/mlex_store/{USER}/{job_id}/training_log.csv"
-#                 )
-#                 if os.path.exists(loss_file_path):
-#                     results_fig = generate_loss_plot(loss_file_path)
-#                     results_style_fig = {
-#                         "width": "100%",
-#                         "height": "100%",
-#                         "display": "block",
-#                     }
-
-#         else:
-#             results_fig = []
-#             results_style_fig = {"display": "none"}
-
-#         # Do not update the plot unless loss plot changed
-#         if (
-#             current_fig
-#             and results_fig != dash.no_update
-#             and current_fig["data"][0]["y"] == list(results_fig["data"][0]["y"])
-#         ):
-#             results_fig = dash.no_update
-#             results_style_fig = dash.no_update
-
-#         return results_fig, results_style_fig
-#     elif current_fig:
-#         return [], {"display": "none"}
-#     else:
-#         raise PreventUpdate
 
 
 @callback(
