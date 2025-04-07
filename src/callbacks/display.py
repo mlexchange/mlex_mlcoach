@@ -1,150 +1,112 @@
-import os
-import pathlib
-import pickle
-import time
 import traceback
 
-import dash
-import pandas as pd
-import requests
 from dash import Input, Output, State, callback
-from dash.exceptions import PreventUpdate
 from file_manager.data_project import DataProject
+from mlex_utils.prefect_utils.core import get_children_flow_run_ids
 
-from src.app_layout import DATA_DIR, SPLASH_URL, TILED_KEY, USER, logger
-from src.utils.job_utils import TableJob
-from src.utils.plot_utils import generate_loss_plot, get_class_prob, plot_figure
+from src.app_layout import DATA_TILED_KEY, USER, logger
+from src.utils.data_utils import hash_list_of_strings, tiled_results
+from src.utils.label_utils import labels
+from src.utils.mask_utils import tiled_mask
+from src.utils.plot_utils import get_class_prob, plot_figure
 
 
 @callback(
-    Output("img-output-store", "data"),
-    Output("img-uri", "data"),
-    Input("img-slider", "value"),
-    State({"base_id": "file-manager", "name": "data-project-dict"}, "data"),
-    State("jobs-table", "selected_rows"),
-    State("jobs-table", "data"),
+    Output(
+        {
+            "component": "DbcJobManagerAIO",
+            "subcomponent": "project-name-id",
+            "aio_id": "mlcoach-jobs",
+        },
+        "data",
+    ),
+    Input({"base_id": "file-manager", "name": "data-project-dict"}, "data"),
     prevent_initial_call=True,
 )
-def refresh_image(
-    img_ind,
-    data_project_dict,
-    row,
-    data_table,
-):
+def update_project_name(data_project_dict):
+    data_project = DataProject.from_dict(data_project_dict)
+    data_uris = [dataset.uri for dataset in data_project.datasets]
+    project_name = hash_list_of_strings(data_uris)
+    return project_name
+
+
+@callback(
+    Output("mask-store", "data"),
+    Input("mask-dropdown", "value"),
+)
+def update_mask(mask):
+    """
+    This callback updates the mask in the display
+    Args:
+        mask:               Mask to be applied to the image
+    Returns:
+        mask-store:         Mask to be applied to the image
+    """
+    return tiled_mask.get_data_by_trimmed_uri(mask) if mask != "None" else None
+
+
+@callback(
+    Output(
+        "img-output", "src"
+    ),  # TODO: Populate ("img-output-store", "data") for clientside callback
+    Output("img-uri", "data"),
+    Input("img-slider", "value"),
+    Input({"base_id": "file-manager", "name": "data-project-dict"}, "data"),
+    Input("log-transform", "value"),
+    Input("min-max-percentile", "value"),
+    Input("mask-store", "data"),
+    prevent_initial_call=True,
+)
+def refresh_image(img_ind, data_project_dict, log_transform, min_max_percentile, mask):
     """
     This callback updates the image in the display
     Args:
         img_ind:            Index of image according to the slider value
-        log:                Log toggle
         data_project_dict:  Selected data
-        row:                Selected job (model)
-        data_table:         Data in table of jobs
     Returns:
         img-output:         Output figure
     """
-    start = time.time()
-    # Get selected job type
-    if row and len(row) > 0 and row[0] < len(data_table):
-        selected_job_type = data_table[row[0]]["job_type"]
-    else:
-        selected_job_type = None
-
-    if selected_job_type == "prediction_model":
-        job_id = data_table[row[0]]["experiment_id"]
-        data_path = pathlib.Path(f"{DATA_DIR}/mlex_store/{USER}/{job_id}")
-
-        with open(f"{data_path}/.file_manager_vars.pkl", "rb") as file:
-            data_project_dict = pickle.load(file)
-    data_project = DataProject.from_dict(data_project_dict, api_key=TILED_KEY)
+    data_project = DataProject.from_dict(data_project_dict, api_key=DATA_TILED_KEY)
     if (
         len(data_project.datasets) > 0
         and data_project.datasets[-1].cumulative_data_count > 0
     ):
-        fig, uri = data_project.read_datasets(indices=[img_ind], resize=True)
-        fig = fig[0]
+        img, uri = data_project.read_datasets(
+            indices=[img_ind],
+            resize=True,
+            log=log_transform,
+            percentiles=min_max_percentile,
+            export="pillow",
+        )
+        fig = plot_figure(img[0])
         uri = uri[0]
     else:
         uri = None
         fig = plot_figure()
-    logger.info(f"Time to read data: {time.time() - start}")
     return fig, uri
-
-
-@callback(
-    Output("img-slider", "max", allow_duplicate=True),
-    Output("img-slider", "value", allow_duplicate=True),
-    Input("jobs-table", "selected_rows"),
-    Input("jobs-table", "data"),
-    State("img-slider", "value"),
-    prevent_initial_call=True,
-)
-def update_slider_boundaries_prediction(
-    row,
-    data_table,
-    slider_ind,
-):
-    """
-    This callback updates the slider boundaries according to the selected job type
-    Args:
-        row:                Selected row (job)
-        data_table:         Lists of jobs
-        slider_ind:         Slider index
-    Returns:
-        img-slider:         Maximum value of the slider
-        img-slider:         Slider index
-    """
-    # Get selected job type
-    if row and len(row) > 0 and row[0] < len(data_table):
-        selected_job_type = data_table[row[0]]["job_type"]
-    else:
-        selected_job_type = None
-
-    # If selected job type is train_model or tune_model
-    if selected_job_type == "prediction_model":
-        job_id = data_table[row[0]]["experiment_id"]
-        data_path = pathlib.Path(f"{DATA_DIR}/mlex_store/{USER}/{job_id}")
-
-        with open(f"{data_path}/.file_manager_vars.pkl", "rb") as file:
-            data_project_dict = pickle.load(file)
-        data_project = DataProject.from_dict(data_project_dict, api_key=TILED_KEY)
-
-        # Check if slider index is out of bounds
-        if (
-            len(data_project.datasets) > 0
-            and slider_ind > data_project.datasets[-1].cumulative_data_count - 1
-        ):
-            slider_ind = 0
-
-        return data_project.datasets[-1].cumulative_data_count - 1, slider_ind
-
-    else:
-        raise PreventUpdate
 
 
 @callback(
     Output("img-slider", "max"),
     Output("img-slider", "value"),
     Input({"base_id": "file-manager", "name": "data-project-dict"}, "data"),
-    Input("jobs-table", "selected_rows"),
     State("img-slider", "value"),
     prevent_initial_call=True,
 )
 def update_slider_boundaries_new_dataset(
     data_project_dict,
-    row,
     slider_ind,
 ):
     """
-    This callback updates the slider boundaries according to the selected job type
+    This callback updates the slider boundaries
     Args:
         data_project_dict:  Data project dictionary
-        row:                Selected row (job)
         slider_ind:         Slider index
     Returns:
         img-slider:         Maximum value of the slider
         img-slider:         Slider index
     """
-    data_project = DataProject.from_dict(data_project_dict, api_key=TILED_KEY)
+    data_project = DataProject.from_dict(data_project_dict, api_key=DATA_TILED_KEY)
     if len(data_project.datasets) > 0:
         max_ind = data_project.datasets[-1].cumulative_data_count - 1
     else:
@@ -167,43 +129,39 @@ def update_slider_value(labeled_img_ind):
     Returns:
         img-slider:         Slider index
     """
-    return labeled_img_ind
+    return int(labeled_img_ind)
 
 
 @callback(
     Output("img-label", "children"),
     Input("img-uri", "data"),
     Input("event-id", "value"),
-    State({"base_id": "file-manager", "name": "data-project-dict"}, "data"),
+    State(
+        {
+            "component": "DbcJobManagerAIO",
+            "subcomponent": "project-name-id",
+            "aio_id": "mlcoach-jobs",
+        },
+        "data",
+    ),
     prevent_initial_call=True,
 )
-def refresh_label(uri, event_id, data_project_dict):
+def refresh_label(uri, event_id, project_name):
     """
     This callback updates the label of the image in the display
     Args:
         uri:                URI of the image
         event_id:           Event ID
-        data_project_dict:  Data project dictionary
+        project_name:       Name of the project
     Returns:
         img-label:          Label of the image
     """
-    data_project = DataProject.from_dict(data_project_dict, api_key=TILED_KEY)
     label = "Not labeled"
     if event_id is not None and uri is not None:
-        datasets = requests.get(
-            f"{SPLASH_URL}/datasets",
-            params={
-                "uris": uri,
-                "event_id": event_id,
-                "project": data_project.project_id,
-            },
-        ).json()
-        if len(datasets) > 0:
-            for dataset in datasets:
-                for tag in dataset["tags"]:
-                    if tag["event_id"] == event_id:
-                        label = f"Label: {tag['name']}"
-                        break
+        try:
+            label = labels.get_label(project_name, event_id, uri)
+        except Exception:
+            logger.error(traceback.format_exc())
     return label
 
 
@@ -211,123 +169,147 @@ def refresh_label(uri, event_id, data_project_dict):
     Output("results-plot", "figure"),
     Output("results-plot", "style"),
     Input("img-slider", "value"),
-    Input("jobs-table", "selected_rows"),
-    Input("interval", "n_intervals"),
-    State("jobs-table", "data"),
-    State("results-plot", "figure"),
+    Input("show-results", "value"),
+    Input(
+        {
+            "component": "DbcJobManagerAIO",
+            "subcomponent": "train-dropdown",
+            "aio_id": "mlcoach-jobs",
+        },
+        "value",
+    ),
+    State(
+        {
+            "component": "DbcJobManagerAIO",
+            "subcomponent": "project-name-id",
+            "aio_id": "mlcoach-jobs",
+        },
+        "data",
+    ),
     prevent_initial_call=True,
 )
-def refresh_results(img_ind, row, interval, data_table, current_fig):
-    """
-    This callback updates the results in the display
-    Args:
-        img_ind:            Index of image according to the slider value
-        row:                Selected job (model)
-        data_table:         Data in table of jobs
-        current_fig:        Current loss plot
-    Returns:
-        results_plot:       Output results with probabilities per class
-        results_style:      Modify visibility of output results
-    """
-    changed_id = dash.callback_context.triggered[-1]["prop_id"]
-    results_fig = dash.no_update
-    results_style_fig = dash.no_update
-
-    if row is not None and len(row) > 0 and row[0] < len(data_table):
-        # Get the job logs
-        try:
-            job_data = TableJob.get_job(
-                USER, "mlcoach", job_id=data_table[row[0]]["job_id"]
-            )
-        except Exception:
-            logger.error(traceback.format_exc())
-            raise PreventUpdate
-        log = job_data["logs"]
-
-        # Plot classification probabilities per class
-        if (
-            "interval" not in changed_id
-            and data_table[row[0]]["job_type"] == "prediction_model"
-        ):
-            job_id = data_table[row[0]]["experiment_id"]
-            data_path = pathlib.Path(f"{DATA_DIR}/mlex_store/{USER}/{job_id}")
-
-            # Check if the results file exists
-            if os.path.exists(f"{data_path}/results.parquet"):
-                df_prob = pd.read_parquet(f"{data_path}/results.parquet")
-
-                # Get the probabilities for the selected image
-                probs = df_prob.iloc[img_ind]
-                results_fig = get_class_prob(probs)
-                results_style_fig = {
-                    "width": "100%",
-                    "height": "100%",
-                    "display": "block",
-                }
-
-        # Plot the loss plot
-        elif log and data_table[row[0]]["job_type"] == "train_model":
-            if data_table[row[0]]["job_type"] == "train_model":
-                job_id = data_table[row[0]]["experiment_id"]
-                loss_file_path = (
-                    f"{DATA_DIR}/mlex_store/{USER}/{job_id}/training_log.csv"
-                )
-                if os.path.exists(loss_file_path):
-                    results_fig = generate_loss_plot(loss_file_path)
-                    results_style_fig = {
-                        "width": "100%",
-                        "height": "100%",
-                        "display": "block",
-                    }
-
-        else:
-            results_fig = []
-            results_style_fig = {"display": "none"}
-
-        # Do not update the plot unless loss plot changed
-        if (
-            current_fig
-            and results_fig != dash.no_update
-            and current_fig["data"][0]["y"] == list(results_fig["data"][0]["y"])
-        ):
-            results_fig = dash.no_update
-            results_style_fig = dash.no_update
-
-        return results_fig, results_style_fig
-    elif current_fig:
-        return [], {"display": "none"}
+def refresh_results(img_ind, show_res, job_id, project_name):
+    if show_res:
+        child_job_id = get_children_flow_run_ids(job_id)[1]
+        expected_result_uri = f"{USER}/{project_name}/{child_job_id}/probabilities"
+        print(f"Expected result URI: {expected_result_uri}", flush=True)
+        probs = tiled_results.get_data_by_trimmed_uri(expected_result_uri, indx=img_ind)
+        print(f"Probabilities: {probs}", flush=True)
+        results_fig = get_class_prob(probs)
+        results_style_fig = {
+            "width": "100%",
+            "height": "100%",
+            "display": "block",
+        }
     else:
-        raise PreventUpdate
+        results_fig = get_class_prob()
+        results_style_fig = {"display": "none"}
+    return results_fig, results_style_fig
+
+
+# @callback(
+#     Output("results-plot", "figure"),
+#     Output("results-plot", "style"),
+#     Input("img-slider", "value"),
+#     Input("jobs-table", "selected_rows"),
+#     Input("interval", "n_intervals"),
+#     State("jobs-table", "data"),
+#     State("results-plot", "figure"),
+#     prevent_initial_call=True,
+# )
+# def refresh_results(img_ind, row, interval, data_table, current_fig):
+#     """
+#     This callback updates the results in the display
+#     Args:
+#         img_ind:            Index of image according to the slider value
+#         row:                Selected job (model)
+#         data_table:         Data in table of jobs
+#         current_fig:        Current loss plot
+#     Returns:
+#         results_plot:       Output results with probabilities per class
+#         results_style:      Modify visibility of output results
+#     """
+#     changed_id = dash.callback_context.triggered[-1]["prop_id"]
+#     results_fig = dash.no_update
+#     results_style_fig = dash.no_update
+
+#     if row is not None and len(row) > 0 and row[0] < len(data_table):
+#         # Get the job logs
+#         try:
+#             job_data = TableJob.get_job(
+#                 USER, "mlcoach", job_id=data_table[row[0]]["job_id"]
+#             )
+#         except Exception:
+#             logger.error(traceback.format_exc())
+#             raise PreventUpdate
+#         log = job_data["logs"]
+
+#         # Plot classification probabilities per class
+#         if (
+#             "interval" not in changed_id
+#             and data_table[row[0]]["job_type"] == "prediction_model"
+#         ):
+#             job_id = data_table[row[0]]["experiment_id"]
+#             data_path = pathlib.Path(f"{READ_DIR}/mlex_store/{USER}/{job_id}")
+
+#             # Check if the results file exists
+#             if os.path.exists(f"{data_path}/results.parquet"):
+#                 df_prob = pd.read_parquet(f"{data_path}/results.parquet")
+
+#                 # Get the probabilities for the selected image
+#                 probs = df_prob.iloc[img_ind]
+#                 results_fig = get_class_prob(probs)
+#                 results_style_fig = {
+#                     "width": "100%",
+#                     "height": "100%",
+#                     "display": "block",
+#                 }
+
+#         # Plot the loss plot
+#         elif log and data_table[row[0]]["job_type"] == "train_model":
+#             if data_table[row[0]]["job_type"] == "train_model":
+#                 job_id = data_table[row[0]]["experiment_id"]
+#                 loss_file_path = (
+#                     f"{READ_DIR}/mlex_store/{USER}/{job_id}/training_log.csv"
+#                 )
+#                 if os.path.exists(loss_file_path):
+#                     results_fig = generate_loss_plot(loss_file_path)
+#                     results_style_fig = {
+#                         "width": "100%",
+#                         "height": "100%",
+#                         "display": "block",
+#                     }
+
+#         else:
+#             results_fig = []
+#             results_style_fig = {"display": "none"}
+
+#         # Do not update the plot unless loss plot changed
+#         if (
+#             current_fig
+#             and results_fig != dash.no_update
+#             and current_fig["data"][0]["y"] == list(results_fig["data"][0]["y"])
+#         ):
+#             results_fig = dash.no_update
+#             results_style_fig = dash.no_update
+
+#         return results_fig, results_style_fig
+#     elif current_fig:
+#         return [], {"display": "none"}
+#     else:
+#         raise PreventUpdate
 
 
 @callback(
-    Output("warning-modal", "is_open"),
-    Output("warning-msg", "children"),
-    Input("warning-cause", "data"),
-    Input("warning-cause-execute", "data"),
+    Output("sidebar-offcanvas", "is_open", allow_duplicate=True),
+    Output("main-display", "style"),
+    Input("sidebar-view", "n_clicks"),
+    State("sidebar-offcanvas", "is_open"),
     prevent_initial_call=True,
 )
-def open_warning_modal(warning_cause, warning_cause_exec):
-    """
-    This callback opens a warning/error message
-    Args:
-        warning_cause:      Cause that triggered the warning
-        warning_cause_exec: Execution-related cause that triggered the warning
-        is_open:            Close/open state of the warning
-    """
-    if warning_cause_exec == "no_row_selected":
-        return False, "Please select a trained model from the List of Jobs."
-    elif warning_cause_exec == "no_dataset":
-        return False, "Please upload the dataset before submitting the job."
+def toggle_sidebar(n_clicks, is_open):
+    if is_open:
+        style = {}
     else:
-        return False, ""
-
-
-@callback(
-    Output("warning-modal", "is_open", allow_duplicate=True),
-    Output("warning-msg", "children", allow_duplicate=True),
-    Input("ok-button", "n_clicks"),
-    prevent_initial_call=True,
-)
-def close_warning_modal(ok_n_clicks):
-    return False, ""
+        style = {"padding": "0px 10px 0px 510px", "width": "100%"}
+    return not is_open, style
