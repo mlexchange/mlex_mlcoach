@@ -4,14 +4,6 @@
     padding: 0;
 }
 
-#howto-open {
-    white-space: nowrap;
-}
-
-#gh-link {
-    white-space: nowrap;
-}
-
 .card {
     margin: 1em 0 1em 0;
     min-width: auto;
@@ -31,4 +23,26 @@ label {
     width: 100vw;
     margin: 0;
     border-style: solid;
+}
+
+.accordion-button {
+    font-size: large;
+    font-weight: bold;
+}
+
+.offcanvas-header {
+    display: none;
+}
+
+.offcanvas-body {
+    padding: 0%;
+}
+
+.navbar {
+    z-index: 1100 !important;
+    position: relative;
+}
+
+.modal {
+    z-index: 1100 !important;
 }

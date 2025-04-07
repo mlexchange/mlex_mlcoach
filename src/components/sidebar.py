@@ -1,175 +1,173 @@
 import dash_bootstrap_components as dbc
-import dash_daq as daq
-from dash import dcc
+from dash import dcc, html
+from dash_iconify import DashIconify
+from mlex_utils.dash_utils.components_bootstrap.component_utils import (
+    DbcControlItem as ControlItem,
+)
+
+from src.utils.mask_utils import get_mask_options
 
 
-def sidebar(file_explorer, models, counters):
+def sidebar(file_explorer, job_manager):
     """
     Creates the dash components in the left sidebar of the app
     Args:
         file_explorer:      Dash file explorer
-        models:             Currently available ML algorithms in content registry
-        counters:           Init training and testing model counters to be used by default when no
-                            job description/name is added
+        job_manager:        Job manager object
+    Returns:
+        sidebar:            Dash sidebar
     """
-    sidebar = [
-        dbc.Accordion(
-            id="sidebar",
-            children=[
-                dbc.AccordionItem(
-                    title="Data selection",
+    sidebar = html.Div(
+        [
+            dbc.Offcanvas(
+                id="sidebar-offcanvas",
+                is_open=True,
+                backdrop=False,
+                scrollable=True,
+                style={
+                    "padding": "80px 0px 0px 0px",
+                    "width": "500px",
+                },  # Avoids being covered by the navbar
+                title="Controls",
+                children=dbc.Accordion(
+                    id="sidebar",
+                    always_open=True,
                     children=[
-                        file_explorer,
-                        dbc.Button(
-                            "Load Labels from Splash-ML",
-                            id="button-load-splash",
-                            color="primary",
-                            style={"width": "100%", "margin-top": "10px"},
-                        ),
-                        dbc.Modal(
-                            [
-                                dbc.ModalHeader(dbc.ModalTitle("Labeling versions")),
-                                dbc.ModalBody(
+                        dbc.AccordionItem(
+                            title="Data selection",
+                            children=[
+                                file_explorer,
+                                html.P(),
+                                ControlItem(
+                                    "Load Labels",
+                                    "load-labels-title",
                                     [
-                                        dcc.Input(
-                                            id="timezone-browser",
-                                            style={"display": "none"},
+                                        dbc.Row(
+                                            [
+                                                dbc.Col(
+                                                    dbc.Select(
+                                                        id="event-id",
+                                                        options=[],
+                                                        value=None,
+                                                    ),
+                                                    width=10,
+                                                ),
+                                                dbc.Col(
+                                                    dbc.Button(
+                                                        DashIconify(
+                                                            icon="mdi:refresh-circle",
+                                                            width=20,
+                                                            style={"display": "block"},
+                                                        ),
+                                                        id="refresh-label-events",
+                                                        color="secondary",
+                                                        size="sm",
+                                                        className="rounded-circle",
+                                                        style={
+                                                            "aspectRatio": "1 / 1",
+                                                            "paddingLeft": "1px",
+                                                            "paddingRight": "1px",
+                                                            "paddingTop": "1px",
+                                                            "paddingBottom": "1px",
+                                                        },
+                                                    ),
+                                                    className="d-flex justify-content-center align-items-center",
+                                                    width=2,
+                                                ),
+                                            ],
+                                            className="g-1",
                                         ),
-                                        dcc.Dropdown(id="event-id"),
-                                    ]
-                                ),
-                                dbc.ModalFooter(
-                                    [
-                                        dbc.Button(
-                                            "LOAD",
-                                            id="confirm-load-splash",
-                                            color="primary",
-                                            outline=False,
-                                            className="ms-auto",
-                                            n_clicks=0,
-                                        )
-                                    ]
+                                    ],
                                 ),
                             ],
-                            id="modal-load-splash",
-                            is_open=False,
                         ),
-                    ],
-                ),
-                dbc.AccordionItem(
-                    title="Data transformation",
-                    children=[
-                        dbc.Label("Log-transform"),
-                        daq.BooleanSwitch(
-                            id="log-transform",
-                            on=False,
-                        ),
-                    ],
-                ),
-                dbc.AccordionItem(
-                    title="Model configuration",
-                    children=[
-                        dbc.Row(
-                            [
-                                dbc.Col(
-                                    dbc.Label(
-                                        "Action",
-                                        style={
-                                            "height": "100%",
-                                            "display": "flex",
-                                            "align-items": "center",
+                        dbc.AccordionItem(
+                            title="Data transformation",
+                            children=[
+                                ControlItem(
+                                    "",
+                                    "empty-title-log-transform",
+                                    dbc.Switch(
+                                        id="log-transform",
+                                        value=False,
+                                        label="Log Transform",
+                                    ),
+                                ),
+                                html.P(),
+                                ControlItem(
+                                    "Min-Max Percentile",
+                                    "min-max-percentile-title",
+                                    dcc.RangeSlider(
+                                        id="min-max-percentile",
+                                        min=0,
+                                        max=100,
+                                        tooltip={
+                                            "placement": "bottom",
+                                            "always_visible": True,
                                         },
+                                        value=[0, 100],
                                     ),
-                                    width=2,
                                 ),
-                                dbc.Col(
-                                    dcc.Dropdown(
-                                        id="action",
-                                        options=[
-                                            {"label": "Train", "value": "train_model"},
-                                            {
-                                                "label": "Prediction",
-                                                "value": "prediction_model",
-                                            },
-                                        ],
-                                        value="train_model",
+                                html.P(),
+                                ControlItem(
+                                    "Mask Selection",
+                                    "mask-dropdown-title",
+                                    dbc.Select(
+                                        id="mask-dropdown",
+                                        options=get_mask_options(),
+                                        value="None",
                                     ),
-                                    width=10,
                                 ),
                             ],
-                            className="mb-3",
                         ),
-                        dbc.Row(
-                            [
-                                dbc.Col(
-                                    dbc.Label(
-                                        "Model",
-                                        style={
-                                            "height": "100%",
-                                            "display": "flex",
-                                            "align-items": "center",
-                                        },
+                        dbc.AccordionItem(
+                            children=[
+                                job_manager,
+                                ControlItem(
+                                    "",
+                                    "empty-title-recons",
+                                    dbc.Switch(
+                                        id="show-results",
+                                        value=False,
+                                        label="Show Results",
+                                        disabled=True,
                                     ),
-                                    width=2,
-                                ),
-                                dbc.Col(
-                                    dcc.Dropdown(
-                                        id="model-selection",
-                                        options=models,
-                                        value=models[0]["value"],
-                                    ),
-                                    width=10,
                                 ),
                             ],
-                            className="mb-3",
-                        ),
-                        dbc.Card(
-                            [
-                                dbc.CardBody(
-                                    id="app-parameters",
-                                    style={
-                                        "overflowY": "scroll",
-                                        "height": "50vh",  # Adjust as needed
-                                    },
-                                ),
-                            ]
-                        ),
-                        dbc.Button(
-                            "Execute",
-                            id="execute",
-                            n_clicks=0,
-                            style={
-                                "width": "100%",
-                                "margin-left": "0px",
-                                "margin-top": "10px",
-                            },
+                            title="Model Configuration",
                         ),
                     ],
+                    style={"overflow-y": "scroll", "height": "90vh"},
                 ),
-            ],
-        ),
-        dbc.Modal(
-            [
-                dbc.ModalHeader("Warning"),
-                dbc.ModalBody(id="warning-msg"),
-                dbc.ModalFooter(
-                    [
-                        dbc.Button(
-                            "OK",
-                            id="ok-button",
-                            color="danger",
-                            outline=False,
-                            className="ms-auto",
-                            n_clicks=0,
-                        ),
-                    ]
-                ),
-            ],
-            id="warning-modal",
-            is_open=False,
-        ),
-        dcc.Store(id="warning-cause", data=""),
-        dcc.Store(id="warning-cause-execute", data=""),
-        dcc.Store(id="counters", data=counters),
-    ]
+            ),
+            create_show_sidebar_affix(),
+        ]
+    )
     return sidebar
+
+
+def create_show_sidebar_affix():
+    return html.Div(
+        [
+            dbc.Button(
+                DashIconify(icon="circum:settings", width=20),
+                id="sidebar-view",
+                size="sm",
+                color="secondary",
+                className="rounded-circle",
+                style={"aspectRatio": "1 / 1"},
+            ),
+            dbc.Tooltip(
+                "Toggle sidebar",
+                target="sidebar-view",
+                placement="top",
+            ),
+        ],
+        style={
+            "position": "fixed",
+            "bottom": "60px",
+            "right": "10px",
+            "zIndex": 9999,  # Note: zIndex is unitless
+            "opacity": "0.8",
+        },
+    )

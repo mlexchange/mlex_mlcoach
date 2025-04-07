@@ -1,36 +1,34 @@
+import json
 import logging
 import os
-import pathlib
 
 import dash
 import dash_bootstrap_components as dbc
 import diskcache
-from dash import html
+from dash import dcc, html
 from dash.long_callback import DiskcacheLongCallbackManager
 from dotenv import load_dotenv
 from file_manager.main import FileManager
+from mlex_utils.dash_utils.mlex_components import MLExComponents
 
 from src.components.header import header
-from src.components.job_table import job_table
 from src.components.main_display import main_display
-from src.components.resources_setup import resources_setup
 from src.components.sidebar import sidebar
-from src.utils.job_utils import TableJob, get_host
-from src.utils.model_utils import get_model_list
+from src.components.training_stats import training_stats_plot
+from src.utils.model_utils import Models
 
 load_dotenv(".env")
 
-USER = "admin"
-DATA_DIR = os.getenv("DATA_DIR")
-DOCKER_DATA = pathlib.Path.home() / "data"
-UPLOAD_FOLDER_ROOT = DOCKER_DATA / "upload"
-SPLASH_URL = os.getenv("SPLASH_URL")
+USER = os.getenv("USER", "mlcoach_user")
+READ_DIR = os.getenv("READ_DIR", "data")
 DEFAULT_TILED_URI = os.getenv("DEFAULT_TILED_URI")
-TILED_KEY = os.getenv("TILED_KEY")
-if TILED_KEY == "":
-    TILED_KEY = None
-HOST_NICKNAME = os.getenv("HOST_NICKNAME")
-num_processors, num_gpus = get_host(HOST_NICKNAME)
+DEFAULT_TILED_SUB_URI = os.getenv("DEFAULT_TILED_SUB_URI")
+DATA_TILED_KEY = os.getenv("DATA_TILED_KEY")
+if DATA_TILED_KEY == "":
+    DATA_TILED_KEY = None
+MODELFILE_PATH = os.getenv("MODELFILE_PATH", "./examples/assets/models.json")
+MODE = os.getenv("MODE", "dev")
+PREFECT_TAGS = json.loads(os.getenv("PREFECT_TAGS", '["mlcoach"]'))
 
 # SETUP LOGGING
 logging.basicConfig(level=logging.INFO)
@@ -53,12 +51,28 @@ app = dash.Dash(
 app.title = "MLCoach"
 app._favicon = "mlex.ico"
 dash_file_explorer = FileManager(
-    DATA_DIR,
+    READ_DIR,
     open_explorer=False,
-    api_key=TILED_KEY,
+    api_key=DATA_TILED_KEY,
     logger=logger,
 )
 dash_file_explorer.init_callbacks(app)
+file_explorer = dash_file_explorer.file_explorer
+
+# GET MODELS
+models = Models(
+    modelfile_path="./src/assets/default_models.json",
+    model_type="classification",
+)
+
+# SETUP MLEx COMPONENTS
+mlex_components = MLExComponents("dbc")
+job_manager = mlex_components.get_job_manager(
+    model_list=models.modelname_list,
+    mode=MODE,
+    aio_id="mlcoach-jobs",
+    prefect_tags=PREFECT_TAGS,
+)
 
 # DEFINE LAYOUT
 app.layout = html.Div(
@@ -66,21 +80,11 @@ app.layout = html.Div(
         header("MLExchange | MLCoach", "https://github.com/mlexchange/mlex_mlcoach"),
         dbc.Container(
             [
-                dbc.Row(
-                    [
-                        dbc.Col(
-                            sidebar(
-                                dash_file_explorer.file_explorer,
-                                get_model_list(),
-                                TableJob.get_counter(USER),
-                            ),
-                            width=4,
-                        ),
-                        dbc.Col(main_display(job_table()), width=8),
-                        html.Div(id="dummy-output"),
-                    ]
-                ),
-                resources_setup(num_processors, num_gpus),
+                sidebar(file_explorer, job_manager),
+                main_display(training_stats_plot()),
+                html.Div(id="dummy-output"),
+                dcc.Store(id="timezone-browser", data=None),
+                dcc.Store(id="mask-store", data=""),
             ],
             fluid=True,
         ),

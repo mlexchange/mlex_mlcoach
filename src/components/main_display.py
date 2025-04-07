@@ -1,17 +1,22 @@
 import dash_bootstrap_components as dbc
 from dash import dcc, html
+from mlex_utils.dash_utils.components_bootstrap.component_utils import (
+    DbcControlItem as ControlItem,
+)
 
 from src.utils.plot_utils import plot_figure
 
 
-def main_display(job_table):
+def main_display(loss_plot):
     """
     Creates the dash components within the main display in the app
     Args:
-        job_table:          Job table
+        loss_plot:      Loss plot
     """
     main_display = html.Div(
-        [
+        id="main-display",
+        style={"padding": "0px 10px 0px 510px"},
+        children=[
             dbc.Row(
                 [
                     dbc.Col(
@@ -31,27 +36,30 @@ def main_display(job_table):
                                                         html.Img(
                                                             id="img-output",
                                                             src=plot_figure(),
-                                                            style={
-                                                                "height": "60%",
-                                                                "display": "block",
-                                                                "margin": "auto",
-                                                            },
+                                                            style={"height": "60%"},
                                                         ),
                                                         dcc.Store(
                                                             id="img-output-store",
                                                             data=None,
                                                         ),
-                                                    ]
+                                                    ],
+                                                    style={
+                                                        "display": "flex",
+                                                        "justify-content": "center",
+                                                        "width": "100%",
+                                                    },
                                                 ),
                                             ],
                                         ),
                                         dcc.Store(id="img-uri", data=None),
+                                        html.P(),
                                         html.Div(
                                             [
                                                 dbc.Label(
                                                     id="img-label",
                                                     style={"height": "2rem"},
                                                 ),
+                                                html.P(),
                                                 dcc.Slider(
                                                     id="img-slider",
                                                     min=0,
@@ -63,39 +71,27 @@ def main_display(job_table):
                                                         "always_visible": True,
                                                     },
                                                 ),
-                                                dbc.Row(
-                                                    [
-                                                        dbc.Col(
-                                                            dbc.Label(
-                                                                "List of labeled images:",
-                                                                style={
-                                                                    "height": "100%",
-                                                                    "display": "flex",
-                                                                    "align-items": "center",
-                                                                },
+                                                html.P(),
+                                                ControlItem(
+                                                    "Labeled images:",
+                                                    "title-img-labeled-indx",
+                                                    dcc.Loading(
+                                                        id="loading-labeled-imgs",
+                                                        parent_className="transparent-loader-wrapper",
+                                                        children=[
+                                                            dbc.Select(
+                                                                id="img-labeled-indx",
+                                                                options=[],
                                                             ),
-                                                        ),
-                                                        dbc.Col(
-                                                            dcc.Loading(
-                                                                id="loading-labeled-imgs",
-                                                                parent_className="transparent-loader-wrapper",
-                                                                children=[
-                                                                    dcc.Dropdown(
-                                                                        id="img-labeled-indx",
-                                                                        options=[],
-                                                                        clearable=False,
-                                                                    ),
-                                                                ],
-                                                            ),
-                                                        ),
-                                                    ]
+                                                        ],
+                                                    ),
                                                 ),
                                             ],
                                             style={"vertical-align": "bottom"},
                                         ),
                                     ],
                                     style={
-                                        "height": "45vh",
+                                        "height": "83vh",
                                         "vertical-align": "bottom",
                                     },
                                 ),
@@ -114,7 +110,7 @@ def main_display(job_table):
                                             id="results-plot", style={"display": "none"}
                                         )
                                     ],
-                                    style={"height": "45vh"},
+                                    style={"height": "83vh"},
                                 ),
                             ],
                         ),
@@ -122,8 +118,8 @@ def main_display(job_table):
                     ),
                 ],
             ),
-            job_table,
+            html.Div(loss_plot),
             dcc.Interval(id="interval", interval=5 * 1000, n_intervals=0),
-        ]
+        ],
     )
     return main_display
