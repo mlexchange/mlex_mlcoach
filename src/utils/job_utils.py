@@ -1,165 +1,291 @@
 import json
 import os
-import urllib
+from urllib.parse import urljoin
 
-import requests
-from dotenv import load_dotenv
+# I/O parameters for job execution
+READ_DIR_MOUNT = os.getenv("READ_DIR_MOUNT", None)
+WRITE_DIR_MOUNT = os.getenv("WRITE_DIR_MOUNT", None)
+WRITE_DIR = os.getenv("WRITE_DIR", "")
+LABELS_TILED_API_KEY = os.getenv("LABELS_TILED_API_KEY", None)
+MASK_TILED_API_KEY = os.getenv("MASK_TILED_API_KEY", None)
+RESULTS_TILED_URI = os.getenv("RESULTS_TILED_URI", "")
+RESULTS_TILED_API_KEY = os.getenv("RESULTS_TILED_API_KEY", None)
+MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "")
 
-load_dotenv(".env")
-
-COMPUTE_URL = str(os.environ["MLEX_COMPUTE_URL"])
-
-
-class TableJob:
-    def __init__(
-        self, job_id, job_name, job_type, job_status, job_params, experiment_id
-    ):
-        self.job_id = job_id
-        self.name = job_name
-        self.job_type = job_type
-        self.status = job_status
-        self.parameters = job_params
-        self.experiment_id = experiment_id
-        pass
-
-    @staticmethod
-    def compute_job_to_table_job(input_job):
-        compute_job = MlexJob(**input_job)
-        params = compute_job.job_kwargs["kwargs"]["params"]
-        if compute_job.job_kwargs["kwargs"]["job_type"].split()[0] != "train_model":
-            params = f"{params}\nTraining Parameters: {compute_job.job_kwargs['kwargs']['train_params']}"
-        return TableJob(
-            compute_job.uid,
-            compute_job.description,
-            compute_job.job_kwargs["kwargs"]["job_type"],
-            compute_job.status["state"],
-            str(params),
-            compute_job.job_kwargs["kwargs"]["experiment_id"],
-        )
-
-    @staticmethod
-    def get_job(user, mlex_app, job_type=None, deploy_location=None, job_id=None):
-        """
-        Queries the job from the computing database
-        Args:
-            user:               username
-            mlex_app:           mlexchange application
-            job_type:           type of job
-            deploy_location:    deploy location
-        Returns:
-            list of jobs that match the query
-        """
-        url = f"{COMPUTE_URL}/jobs?"
-        if job_id:
-            response = urllib.request.urlopen(f"{url[:-1]}/{job_id}")
-        else:
-            if user:
-                url += "&user=" + user
-            if mlex_app:
-                url += "&mlex_app=" + mlex_app
-            if job_type:
-                url += "&job_type=" + job_type
-            if deploy_location:
-                url += "&deploy_location=" + deploy_location
-            response = urllib.request.urlopen(url)
-        data = json.loads(response.read())
-        return data
-
-    @staticmethod
-    def terminate_job(job_uid):
-        requests.patch(f"{COMPUTE_URL}/jobs/{job_uid}/terminate")
-        pass
-
-    @staticmethod
-    def delete_job(job_uid):
-        requests.delete(f"{COMPUTE_URL}/jobs/{job_uid}/delete")
-        pass
-
-    @staticmethod
-    def get_counter(username):
-        job_list = TableJob.get_job(username, "mlcoach")
-        job_types = ["train_model", "prediction_model"]
-        counters = [-1, -1]
-        if job_list is not None:
-            for indx, job_type in enumerate(job_types):
-                for job in reversed(job_list):
-                    last_job = job["job_kwargs"]["kwargs"]["job_type"]
-                    if job["description"]:
-                        job_name = job["description"].split()
-                    else:
-                        job_name = job["job_kwargs"]["kwargs"]["job_type"].split()
-                    if (
-                        last_job == job_type
-                        and job_name[0] == job_type
-                        and len(job_name) == 2
-                        and job_name[-1].isdigit()
-                    ):
-                        value = int(job_name[-1])
-                        counters[indx] = value
-                        break
-        return counters
+# Flow parameters
+PARTITIONS_CPU = json.loads(os.getenv("PARTITIONS_CPU", "[]"))
+RESERVATIONS_CPU = json.loads(os.getenv("RESERVATIONS_CPU", "[]"))
+MAX_TIME_CPU = os.getenv("MAX_TIME_CPU", "1:00:00")
+PARTITIONS_GPU = json.loads(os.getenv("PARTITIONS_CPU", "[]"))
+RESERVATIONS_GPU = json.loads(os.getenv("RESERVATIONS_CPU", "[]"))
+MAX_TIME_GPU = os.getenv("MAX_TIME_CPU", "1:00:00")
+SUBMISSION_SSH_KEY = os.getenv("SUBMISSION_SSH_KEY", "")
+FORWARD_PORTS = json.loads(os.getenv("FORWARD_PORTS", "[]"))
+CONTAINER_NETWORK = os.getenv("CONTAINER_NETWORK", "")
 
 
-class MlexJob:
-    def __init__(
-        self,
-        service_type,
-        description,
-        working_directory,
-        job_kwargs,
-        mlex_app="mlcoach",
-        status={"state": "queue"},
-        logs="",
-        uid="",
-        **kwargs,
-    ):
-        self.uid = uid
-        self.mlex_app = mlex_app
-        self.description = description
-        self.service_type = service_type
-        self.working_directory = working_directory
-        self.job_kwargs = job_kwargs
-        self.status = status
-        self.logs = logs
+def parse_tiled_url(url, user, project_name, tiled_base_path="/api/v1/metadata"):
+    """
+    Given any URL (e.g. http://localhost:8000/results),
+    return the same scheme/netloc but with path='/api/v1/metadata'.
+    """
+    if tiled_base_path not in url:
+        url = urljoin(url, os.path.join(tiled_base_path, user, project_name))
+    else:
+        url = urljoin(url, f"/{user}/{project_name}")
+    return url
 
-    def submit(self, user, num_cpus, num_gpus):
-        """
-        Sends job to computing service
-        Args:
-            user:       user UID
-            num_cpus:   Number of CPUs
-            num_gpus:   Number of GPUs
-        Returns:
-            Workflow status
-        """
-        workflow = {
-            "user_uid": user,
-            "job_list": [self.__dict__],
-            "host_list": [
-                "mlsandbox.als.lbl.gov",
-                "local.als.lbl.gov",
-                "vaughan.als.lbl.gov",
+
+def parse_train_job_params(
+    data_project,
+    model_parameters,
+    user,
+    project_name,
+    flow_type,
+    classifier_params,
+    labels_tiled_uri,
+    mask_tiled_uri,
+):
+    """
+    Parse training job parameters
+    """
+    # TODO: Use model_name to define the conda_env/algorithm to be executed
+    data_uris = [dataset.uri for dataset in data_project.datasets]
+
+    results_dir = f"{WRITE_DIR}/{user}"
+
+    io_parameters = {
+        "uid_retrieve": "",
+        "data_uris": data_uris,
+        "data_type": data_project.data_type,
+        "root_uri": data_project.root_uri,
+        "data_tiled_api_key": data_project.api_key,
+        "mask_tiled_uri": mask_tiled_uri,
+        "mask_tiled_api_key": MASK_TILED_API_KEY,
+        "labels_tiled_uri": labels_tiled_uri,
+        "labels_tiled_api_key": LABELS_TILED_API_KEY,
+        "results_tiled_uri": parse_tiled_url(RESULTS_TILED_URI, user, project_name),
+        "results_tiled_api_key": RESULTS_TILED_API_KEY,
+        "models_dir": f"{results_dir}/models",
+        "results_dir": f"{results_dir}",
+    }
+
+    python_file_name_train = classifier_params["python_file_name"]["train"]
+    python_file_name_inference = classifier_params["python_file_name"]["inference"]
+
+    if flow_type == "podman" or "docker":
+        job_params = {
+            "flow_type": flow_type,
+            "params_list": [
+                {
+                    "image_name": classifier_params["image_name"],
+                    "image_tag": classifier_params["image_tag"],
+                    "command": f"python {python_file_name_train}",
+                    "params": {
+                        "io_parameters": io_parameters,
+                        "model_parameters": model_parameters,
+                    },
+                    "volumes": [
+                        f"{READ_DIR_MOUNT}:/tiled_storage",
+                    ],
+                    "network": CONTAINER_NETWORK,
+                },
+                {
+                    "image_name": classifier_params["image_name"],
+                    "image_tag": classifier_params["image_tag"],
+                    "command": f"python {python_file_name_inference}",
+                    "params": {
+                        "io_parameters": io_parameters,
+                        "model_parameters": model_parameters,
+                    },
+                    "volumes": [
+                        f"{READ_DIR_MOUNT}:/tiled_storage",
+                    ],
+                    "network": CONTAINER_NETWORK,
+                },
             ],
-            "dependencies": {"0": []},
-            "requirements": {
-                "num_processors": num_cpus,
-                "num_gpus": num_gpus,
-                "num_nodes": 1,
-            },
         }
-        url = f"{COMPUTE_URL}/workflows"
-        return requests.post(url, json=workflow).status_code
+
+    elif flow_type == "conda":
+        job_params = {
+            "flow_type": "conda",
+            "params_list": [
+                {
+                    "conda_env_name": classifier_params["conda_env"],
+                    "python_file_name": python_file_name_train,
+                    "params": {
+                        "io_parameters": io_parameters,
+                        "model_parameters": model_parameters,
+                    },
+                },
+                {
+                    "conda_env_name": classifier_params["conda_env"],
+                    "python_file_name": python_file_name_inference,
+                    "params": {
+                        "io_parameters": io_parameters,
+                        "model_parameters": model_parameters,
+                    },
+                },
+            ],
+        }
+
+    else:
+        job_params = {
+            "flow_type": "slurm",
+            "params_list": [
+                {
+                    "job_name": "latent_space_explorer",
+                    "num_nodes": 1,
+                    "partitions": PARTITIONS_CPU,
+                    "reservations": RESERVATIONS_CPU,
+                    "max_time": MAX_TIME_CPU,
+                    "conda_env_name": classifier_params["conda_env"],
+                    "python_file_name": python_file_name_train,
+                    "submission_ssh_key": SUBMISSION_SSH_KEY,
+                    "forward_ports": FORWARD_PORTS,
+                    "params": {
+                        "io_parameters": io_parameters,
+                        "model_parameters": model_parameters,
+                    },
+                },
+                {
+                    "job_name": "mlcoach",
+                    "num_nodes": 1,
+                    "partitions": PARTITIONS_CPU,
+                    "reservations": RESERVATIONS_CPU,
+                    "max_time": MAX_TIME_CPU,
+                    "conda_env_name": classifier_params["conda_env"],
+                    "python_file_name": python_file_name_inference,
+                    "submission_ssh_key": SUBMISSION_SSH_KEY,
+                    "forward_ports": FORWARD_PORTS,
+                    "params": {
+                        "io_parameters": io_parameters,
+                        "model_parameters": model_parameters,
+                    },
+                },
+            ],
+        }
+
+    return job_params
 
 
-def get_host(host_nickname):
-    hosts = requests.get(f"{COMPUTE_URL}/hosts?&nickname={host_nickname}").json()
-    max_processors = hosts[0]["backend_constraints"]["num_processors"]
-    max_gpus = hosts[0]["backend_constraints"]["num_gpus"]
-    return max_processors, max_gpus
+def parse_inference_job_params(
+    data_project,
+    model_parameters,
+    user,
+    project_name,
+    flow_type,
+    classifier_params,
+    mask_tiled_uri,
+):
+    """
+    Parse inference job parameters
+    """
+    # TODO: Use model_name to define the conda_env/algorithm to be executed
+    data_uris = [dataset.uri for dataset in data_project.datasets]
+
+    results_dir = f"{WRITE_DIR}/{user}"
+
+    io_parameters = {
+        "uid_retrieve": "",
+        "data_uris": data_uris,
+        "data_tiled_api_key": data_project.api_key,
+        "data_type": data_project.data_type,
+        "root_uri": data_project.root_uri,
+        "mask_tiled_uri": mask_tiled_uri,
+        "mask_tiled_api_key": MASK_TILED_API_KEY,
+        "results_tiled_uri": parse_tiled_url(RESULTS_TILED_URI, user, project_name),
+        "results_tiled_api_key": RESULTS_TILED_API_KEY,
+        "models_dir": f"{results_dir}/models",
+        "results_dir": f"{results_dir}",
+    }
+
+    python_file_name_inference = classifier_params["python_file_name"]["inference"]
+
+    if flow_type == "podman" or "docker":
+        job_params = {
+            "flow_type": flow_type,
+            "params_list": [
+                {
+                    "image_name": classifier_params["image_name"],
+                    "image_tag": classifier_params["image_tag"],
+                    "command": f"python {python_file_name_inference}",
+                    "params": {
+                        "io_parameters": io_parameters,
+                        "model_parameters": model_parameters,  # Default parameters
+                    },
+                    "volumes": [
+                        f"{READ_DIR_MOUNT}:/tiled_storage",
+                    ],
+                    "network": CONTAINER_NETWORK,
+                },
+            ],
+        }
+    elif flow_type == "conda":
+        job_params = {
+            "flow_type": "conda",
+            "params_list": [
+                {
+                    "conda_env_name": classifier_params["conda_env"],
+                    "python_file_name": python_file_name_inference,
+                    "params": {
+                        "io_parameters": io_parameters,
+                        "model_parameters": model_parameters,
+                    },
+                },
+            ],
+        }
+
+    else:
+        job_params = {
+            "flow_type": "slurm",
+            "params_list": [
+                {
+                    "job_name": "mlcoach",
+                    "num_nodes": 1,
+                    "partitions": PARTITIONS_CPU,
+                    "reservations": RESERVATIONS_CPU,
+                    "max_time": MAX_TIME_CPU,
+                    "conda_env_name": classifier_params["conda_env"],
+                    "python_file_name": python_file_name_inference,
+                    "submission_ssh_key": SUBMISSION_SSH_KEY,
+                    "forward_ports": FORWARD_PORTS,
+                    "params": {
+                        "io_parameters": io_parameters,
+                        "model_parameters": model_parameters,
+                    },
+                },
+            ],
+        }
+
+    return job_params
 
 
-def str_to_dict(text):
-    text = text.replace("True", "true")
-    text = text.replace("False", "false")
-    text = text.replace("None", "null")
-    return json.loads(text.replace("'", '"'))
+def parse_model_params(model_parameters_html, log, percentiles):
+    """
+    Extracts parameters from the children component of a ParameterItems component,
+    if there are any errors in the input, it will return an error status
+    """
+    errors = False
+    input_params = {}
+    for param in model_parameters_html["props"]["children"]:
+        # param["props"]["children"][0] is the label
+        # param["props"]["children"][1] is the input
+        parameter_container = param["props"]["children"][1]
+        # The achtual parameter item is the first and only child of the parameter container
+        parameter_item = parameter_container["props"]["children"]["props"]
+        key = parameter_item["id"]["param_key"]
+        if "value" in parameter_item:
+            value = parameter_item["value"]
+        elif "checked" in parameter_item:
+            value = parameter_item["checked"]
+        if "error" in parameter_item:
+            if parameter_item["error"] is not False:
+                errors = True
+        input_params[key] = value
+
+    # Manually add data transformation parameters
+    input_params["log"] = log
+    input_params["low_percentile"] = percentiles[0]
+    input_params["high_percentile"] = percentiles[1]
+    return input_params, errors

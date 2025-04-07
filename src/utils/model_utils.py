@@ -1,40 +1,26 @@
-import os
-
-import requests
-
-CONTENT_URL = str(os.environ["MLEX_CONTENT_URL"])
+import json
 
 
-def get_model_list():
-    """
-    Get a list of algorithms from content registry
-    """
-    response = requests.get(f"{CONTENT_URL}/models")
-    models = []
-    for item in response.json():
-        if "mlcoach" in item["application"]:
-            models.append({"label": item["name"], "value": item["content_id"]})
-    return models
+class Models:
+    def __init__(self, modelfile_path="./assets/models.json", model_type=None):
+        self.path = modelfile_path
+        f = open(self.path)
+        contents = json.load(f)["contents"]
+        self.models = {}
+        if model_type:
+            self.modelname_list = []
+            for content in contents:
+                if content["type"] == model_type:
+                    model_name = content["model_name"]
+                    self.modelname_list.append(model_name)
+                    self.models[model_name] = content
+        else:
+            self.modelname_list = [content["model_name"] for content in contents]
+            for i, n in enumerate(self.modelname_list):
+                self.models[n] = contents[i]
 
-
-def get_gui_components(model_uid, comp_group):
-    """
-    Returns the GUI components of the corresponding model and action
-    Args:
-        model_uid:      Model UID
-        comp_group:     Action, e.g. training, testing, etc
-    Returns:
-        params:         List of model parameters
-    """
-    response = requests.get(
-        f"{CONTENT_URL}/models/{model_uid}/model/{comp_group}/gui_params"
-    )
-    return response.json()
-
-
-def get_model_content(content_id):
-    """
-    Get the model content: uri and commands
-    """
-    response = requests.get(f"{CONTENT_URL}/contents/{content_id}/content").json()
-    return response["uri"], response["cmd"]
+    def __getitem__(self, key):
+        try:
+            return self.models[key]
+        except KeyError:
+            raise KeyError(f"A model with name {key} does not exist.")
