@@ -9,16 +9,16 @@ README files.
 
 2. Start [splash-ml](https://github.com/als-computing/splash-ml)
 
-2. Create a new Python environment and install dependencies:
+3. Create a new Python environment and install dependencies:
 ```
 conda create -n new_env python==3.11
 conda activate new_env
 pip install .
 ```
 
-3. Create a `.env` file using `.env.example` as reference. Update this file accordingly.
+4. Create a `.env` file using `.env.example` as reference. Update this file accordingly.
 
-4. Start example app:
+5. Start example app:
 ```
 python frontend.py
 ```
