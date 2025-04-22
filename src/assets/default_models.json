@@ -6,7 +6,7 @@
         "type": "classification",
         "owner": "mlexchange team",
         "image_name": "ghcr.io/mlexchange/mlex_image_classification",
-        "image_tag": "main",
+        "image_tag": "yaml",
         "conda_env": "mlex_image_classification",
         "application": ["mlcoach"],
         "description": "Tensorflow neural networks for image classification",
